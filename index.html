@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Avukat Ofis Yönetimi</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -191,13 +192,21 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 </style>
 </head>
 <body>
+<div id="loading-overlay" style="position:fixed;inset:0;background:#1c1917;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s">
+  <div style="font-family:'DM Serif Display',serif;font-size:28px;color:#fff;margin-bottom:12px">Avukat Ofis</div>
+  <div style="font-size:12px;color:#9ca3af">Veriler yükleniyor...</div>
+</div>
 
 <div class="header">
   <div class="header-left">
     <h1>Avukat Ofis Yönetimi</h1>
     <span class="header-sub" id="hcount"></span>
   </div>
-  <div class="header-right" id="hdate"></div>
+  <div class="header-right" style="display:flex;align-items:center;gap:8px">
+    <span id="hdate" style="font-size:11px;color:#6b7280"></span>
+    <span id="sync-dot" class="sync-dot" style="width:7px;height:7px;border-radius:50%;background:#facc15;display:inline-block"></span>
+    <span id="sync-label" style="font-size:11px;color:#6b7280">Bağlanıyor</span>
+  </div>
 </div>
 
 <nav class="main-nav">
@@ -313,42 +322,71 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 
 <script>
 // ============================================================
-// DATA
+// SUPABASE BAĞLANTISI
 // ============================================================
-var STORAGE_KEY = 'avukat_data_v2';
-var GIDER_KEY   = 'avukat_giderler_v2';
+const SUPA_URL = 'https://syzidhcscmfmulkclgnd.supabase.co';
+const SUPA_KEY = 'sb_publishable_8va68OAvjQlydhcW9uxu6Q_YOtXS0KX';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
 
-var defaultClients = [
-  {id:1,name:"Coşkun Hüseyin Karaoğlı",tckn:"",court:"Bakırköy CBS",city:"",dosya:"2025/122613",agreed:80000,payments:[{date:"2025-01-20",amount:16000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:2,name:"Mehmet Sözlü",tckn:"",court:"",city:"",dosya:"",agreed:70000,payments:[{date:"2025-03-29",amount:50000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:3,name:"İsmail Koç",tckn:"",court:"",city:"",dosya:"",agreed:80000,payments:[{date:"",amount:50000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:4,name:"Baran Kaya",tckn:"",court:"",city:"",dosya:"",agreed:30000,payments:[],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:5,name:"Feridun Durmuş",tckn:"",court:"",city:"",dosya:"",agreed:7000,payments:[{date:"2026-02-23",amount:7000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:6,name:"Noiula",tckn:"",court:"",city:"",dosya:"",agreed:7000,payments:[],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:7,name:"Reşit Bayırlı",tckn:"40270369810",court:"5. Ağır Ceza",city:"Denizli",dosya:"",agreed:85000,payments:[{date:"2026-02-19",amount:55000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:8,name:"Adem Çoltu",tckn:"44716724522",court:"Tokat Ağır Ceza",city:"",dosya:"",agreed:100000,payments:[{date:"2026-02-24",amount:50000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:9,name:"Bilal Özsoy",tckn:"38989361614",court:"",city:"Bakırköy",dosya:"",agreed:40000,payments:[{date:"2026-03-16",amount:40000,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-  {id:10,name:"Özaydın Aydemir",tckn:"10792713088",court:"",city:"Bakırköy",dosya:"",agreed:550000,payments:[{date:"2026-04-15",amount:67500,avukat:""}],masraflar:[],avukatPaylari:[],ozet:""},
-];
-
-function loadData(){
-  try{var s=localStorage.getItem(STORAGE_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(defaultClients));}catch(e){return JSON.parse(JSON.stringify(defaultClients));}
-}
-function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
-
-function loadGiderler(){
-  try{var s=localStorage.getItem(GIDER_KEY);return s?JSON.parse(s):[];}catch(e){return [];}
-}
-function saveGiderler(){localStorage.setItem(GIDER_KEY,JSON.stringify(giderler));}
-
-var data = loadData();
-var giderler = loadGiderler();
-
+// ============================================================
+// STATE
+// ============================================================
+var clients = [];
+var giderler = [];
 var now = new Date();
 var giderYil = now.getFullYear();
 var giderAy  = now.getMonth();
-
 var currentPeriod = 'aylik';
+
+// ============================================================
+// SYNC STATUS
+// ============================================================
+function setSyncStatus(state){
+  var dot=document.getElementById('sync-dot');
+  var lbl=document.getElementById('sync-label');
+  if(!dot||!lbl) return;
+  if(state==='ok'){dot.className='sync-dot';lbl.textContent='Senkronize';}
+  if(state==='loading'){dot.className='sync-dot loading';lbl.textContent='Güncelleniyor...';}
+  if(state==='error'){dot.className='sync-dot error';lbl.textContent='Bağlantı hatası';}
+}
+
+// ============================================================
+// VERİ YÜKLE
+// ============================================================
+async function loadAll(){
+  setSyncStatus('loading');
+  try{
+    var [mv,od,ms,av,gd]=await Promise.all([
+      db.from('muvekkillar').select('*').order('id'),
+      db.from('odemeler').select('*').order('id'),
+      db.from('masraflar').select('*').order('id'),
+      db.from('avukat_paylari').select('*').order('id'),
+      db.from('giderler').select('*').order('id'),
+    ]);
+    clients=(mv.data||[]).map(function(c){
+      return Object.assign({},c,{
+        agreed: Number(c.agreed)||0,
+        payments:(od.data||[]).filter(function(o){return o.muvekkil_id===c.id;}).map(function(o){
+          return {id:o.id,date:o.tarih,amount:Number(o.tutar)||0,avukat:o.avukat||''};
+        }),
+        masraflar:(ms.data||[]).filter(function(m){return m.muvekkil_id===c.id;}).map(function(m){
+          return {id:m.id,tarih:m.tarih,tutar:Number(m.tutar)||0,aciklama:m.aciklama||'',yapan:m.yapan||''};
+        }),
+        avukatPaylari:(av.data||[]).filter(function(a){return a.muvekkil_id===c.id;}).map(function(a){
+          return {id:a.id,avukat:a.avukat||'',tarih:a.tarih,tutar:Number(a.tutar)||0,aciklama:a.aciklama||''};
+        }),
+      });
+    });
+    giderler=(gd.data||[]).map(function(g){
+      return {id:g.id,kategori:g.kategori,tarih:g.tarih,tutar:Number(g.tutar)||0,aciklama:g.aciklama,yil:g.yil,ay:g.ay};
+    });
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('error');}
+  var ol=document.getElementById('loading-overlay');
+  if(ol) ol.classList.add('hidden');
+  renderClients();
+}
 
 // ============================================================
 // HELPERS
@@ -360,8 +398,7 @@ function bal(c){return c.agreed-paid(c)}
 function pct(c){return c.agreed>0?Math.min(100,Math.round(paid(c)/c.agreed*100)):0}
 function totalMasraf(c){return (c.masraflar||[]).reduce(function(s,m){return s+(m.tutar||0);},0)}
 function totalAvukat(c){return (c.avukatPaylari||[]).reduce(function(s,a){return s+(a.tutar||0);},0)}
-
-var AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+var AYLAR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function ayStr(y,m){return AYLAR[m]+' '+y;}
 
 // ============================================================
@@ -395,7 +432,7 @@ function renderClients(){
   var search=(document.getElementById('search').value||'').toLowerCase();
   var sortVal=document.getElementById('sort').value;
 
-  var items=data.filter(function(c){
+  var items=clients.filter(function(c){
     if(filter==='bekleyen'&&bal(c)<=0) return false;
     if(filter==='tamam'&&bal(c)>0) return false;
     if(search&&c.name.toLowerCase().indexOf(search)<0&&
@@ -415,124 +452,125 @@ function renderClients(){
     return 0;
   });
 
-  var done=data.filter(function(c){return bal(c)<=0;}).length;
-  var totalTahsilat=data.reduce(function(s,c){return s+paid(c);},0);
-  document.getElementById('hcount').textContent=data.length+' müvekkil · '+done+' tamamlandı · '+fmt(totalTahsilat)+' toplam tahsilat';
-  document.getElementById('hdate').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+  var done=clients.filter(function(c){return bal(c)<=0;}).length;
+  var totalTahsilat=clients.reduce(function(s,c){return s+paid(c);},0);
+  var hc=document.getElementById('hcount');
+  if(hc) hc.textContent=clients.length+' müvekkil · '+done+' tamamlandı · '+fmt(totalTahsilat)+' toplam tahsilat';
+  var hd=document.getElementById('hdate');
+  if(hd) hd.textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
 
   if(!items.length){document.getElementById('client-list').innerHTML='<div class="empty-state">Müvekkil bulunamadı</div>';return;}
 
   document.getElementById('client-list').innerHTML=items.map(function(c){
-    var i=data.indexOf(c);
+    var cid=c.id;
     var b=bal(c);
     var badge=b<=0?'<span class="badge b-ok">Tamamlandı</span>':paid(c)===0?'<span class="badge b-err">Ödeme yok</span>':'<span class="badge b-warn">Kısmi</span>';
     var meta=[c.court,c.city,c.dosya].filter(Boolean).join(' · ')||'Detay girilmemiş';
 
-    // ---- ÖDEMELER ----
+    // ÖDEMELER
     var pays=(c.payments||[]).length===0
       ?'<div style="font-size:11px;color:var(--ink3);font-style:italic;padding:4px 0">Henüz ödeme girilmemiş</div>'
       :(c.payments||[]).map(function(p,pi){
         var d=p.date?new Date(p.date).toLocaleDateString('tr-TR'):'—';
-        return '<div id="epr-'+i+'-'+pi+'">'
+        return '<div id="epr-'+cid+'-'+pi+'">'
           +'<div class="row-item"><div><div>'+d+(p.avukat?' · <span style="color:var(--ink2)">'+p.avukat+'</span>':'')+'</div></div>'
           +'<div class="row-right"><span style="font-weight:600">'+fmt(p.amount)+'</span>'
-          +'<button class="edit-btn" onclick="editPay('+i+','+pi+')">Düzenle</button>'
-          +'<button class="del-btn" onclick="delPay('+i+','+pi+')">Sil</button>'
+          +'<button class="edit-btn" onclick="editPay(\''+cid+'\','+pi+','+p.id+')">Düzenle</button>'
+          +'<button class="del-btn" onclick="delPay('+p.id+',\''+cid+'\')">Sil</button>'
           +'</div></div></div>'
-          +'<div class="edit-row-form" id="ep-'+i+'-'+pi+'">'
+          +'<div class="edit-row-form" id="ep-'+cid+'-'+pi+'">'
           +'<div class="form-row">'
-          +'<div class="fg"><label>Tarih</label><input type="date" id="epd-'+i+'-'+pi+'" value="'+( p.date||'')+'"></div>'
-          +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="epa-'+i+'-'+pi+'" value="'+(p.amount||0)+'"></div>'
-          +'<div class="fg"><label>Avukat / Kişi</label><input type="text" id="epp-'+i+'-'+pi+'" value="'+(p.avukat||'').replace(/"/g,"&quot;")+'"></div>'
-          +'<button class="sm-btn" style="align-self:flex-end" onclick="savePay('+i+','+pi+')">Kaydet</button>'
-          +'<button class="sm-btn" style="align-self:flex-end" onclick="cancelPay('+i+','+pi+')">İptal</button>'
+          +'<div class="fg"><label>Tarih</label><input type="date" id="epd-'+cid+'-'+pi+'" value="'+(p.date||'')+'"></div>'
+          +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="epa-'+cid+'-'+pi+'" value="'+(p.amount||0)+'"></div>'
+          +'<div class="fg"><label>Avukat / Kişi</label><input type="text" id="epp-'+cid+'-'+pi+'" value="'+(p.avukat||'').replace(/"/g,"&quot;")+'"></div>'
+          +'<button class="sm-btn" style="align-self:flex-end" onclick="savePay(\''+cid+'\','+pi+','+p.id+')">Kaydet</button>'
+          +'<button class="sm-btn" style="align-self:flex-end" onclick="cancelPay(\''+cid+'\','+pi+')">İptal</button>'
           +'</div></div>';
       }).join('');
 
-    // ---- MASRAFLAR ----
-    var masraflar=(c.masraflar||[]).length===0
+    // MASRAFLAR
+    var maslar=(c.masraflar||[]).length===0
       ?'<div style="font-size:11px;color:var(--ink3);font-style:italic;padding:4px 0">Henüz masraf girilmemiş</div>'
       :(c.masraflar||[]).map(function(m,mi){
         var d=m.tarih?new Date(m.tarih).toLocaleDateString('tr-TR'):'—';
-        return '<div id="emr-'+i+'-'+mi+'">'
+        return '<div id="emr-'+cid+'-'+mi+'">'
           +'<div class="row-item"><div><div style="font-weight:500">'+m.aciklama+'</div><div class="meta">'+d+' · '+m.yapan+'</div></div>'
           +'<div class="row-right"><span style="font-weight:600;color:var(--red)">'+fmt(m.tutar)+'</span>'
-          +'<button class="edit-btn" onclick="editMasraf('+i+','+mi+')">Düzenle</button>'
-          +'<button class="del-btn" onclick="delMasraf('+i+','+mi+')">Sil</button>'
+          +'<button class="edit-btn" onclick="editMasraf(\''+cid+'\','+mi+','+m.id+')">Düzenle</button>'
+          +'<button class="del-btn" onclick="delMasraf('+m.id+',\''+cid+'\')">Sil</button>'
           +'</div></div></div>'
-          +'<div class="edit-row-form" id="em-'+i+'-'+mi+'">'
+          +'<div class="edit-row-form" id="em-'+cid+'-'+mi+'">'
           +'<div class="form-row">'
-          +'<div class="fg"><label>Tarih</label><input type="date" id="emd-'+i+'-'+mi+'" value="'+(m.tarih||'')+'"></div>'
-          +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="emt-'+i+'-'+mi+'" value="'+(m.tutar||0)+'"></div>'
-          +'<div class="fg"><label>Açıklama</label><input type="text" id="ema-'+i+'-'+mi+'" value="'+(m.aciklama||'').replace(/"/g,"&quot;")+'"></div>'
-          +'<div class="fg"><label>Yapan</label><input type="text" id="emy-'+i+'-'+mi+'" value="'+(m.yapan||'').replace(/"/g,"&quot;")+'"></div>'
-          +'<button class="sm-btn" style="align-self:flex-end" onclick="saveMasraf('+i+','+mi+')">Kaydet</button>'
-          +'<button class="sm-btn" style="align-self:flex-end" onclick="cancelMasraf('+i+','+mi+')">İptal</button>'
+          +'<div class="fg"><label>Tarih</label><input type="date" id="emd-'+cid+'-'+mi+'" value="'+(m.tarih||'')+'"></div>'
+          +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="emt-'+cid+'-'+mi+'" value="'+(m.tutar||0)+'"></div>'
+          +'<div class="fg"><label>Açıklama</label><input type="text" id="ema-'+cid+'-'+mi+'" value="'+(m.aciklama||'').replace(/"/g,"&quot;")+'"></div>'
+          +'<div class="fg"><label>Yapan</label><input type="text" id="emy-'+cid+'-'+mi+'" value="'+(m.yapan||'').replace(/"/g,"&quot;")+'"></div>'
+          +'<button class="sm-btn" style="align-self:flex-end" onclick="saveMasraf(\''+cid+'\','+mi+','+m.id+')">Kaydet</button>'
+          +'<button class="sm-btn" style="align-self:flex-end" onclick="cancelMasraf(\''+cid+'\','+mi+')">İptal</button>'
           +'</div></div>';
       }).join('');
     var masrafTotal=totalMasraf(c);
 
-    // ---- AVUKAT PAYLARI ----
-    var avukatlar=(c.avukatPaylari||[]).length===0
+    // AVUKAT PAYLARI
+    var avlar=(c.avukatPaylari||[]).length===0
       ?'<div style="font-size:11px;color:var(--ink3);font-style:italic;padding:4px 0">Henüz avukat payı girilmemiş</div>'
       :(c.avukatPaylari||[]).map(function(a,ai){
         var d=a.tarih?new Date(a.tarih).toLocaleDateString('tr-TR'):'—';
-        return '<div id="ear-'+i+'-'+ai+'">'
+        return '<div id="ear-'+cid+'-'+ai+'">'
           +'<div class="row-item"><div><div class="avukat-name">'+a.avukat+'</div><div class="meta">'+d+(a.aciklama?' · '+a.aciklama:'')+'</div></div>'
           +'<div class="row-right"><span class="avukat-total">'+fmt(a.tutar)+'</span>'
-          +'<button class="edit-btn" onclick="editAvukat('+i+','+ai+')">Düzenle</button>'
-          +'<button class="del-btn" onclick="delAvukat('+i+','+ai+')">Sil</button>'
+          +'<button class="edit-btn" onclick="editAvukat(\''+cid+'\','+ai+','+a.id+')">Düzenle</button>'
+          +'<button class="del-btn" onclick="delAvukat('+a.id+',\''+cid+'\')">Sil</button>'
           +'</div></div></div>'
-          +'<div class="edit-row-form" id="ea2-'+i+'-'+ai+'">'
+          +'<div class="edit-row-form" id="ea2-'+cid+'-'+ai+'">'
           +'<div class="form-row">'
-          +'<div class="fg"><label>Avukat Adı</label><input type="text" id="eav-'+i+'-'+ai+'" value="'+(a.avukat||'').replace(/"/g,"&quot;")+'"></div>'
-          +'<div class="fg"><label>Tarih</label><input type="date" id="eavd-'+i+'-'+ai+'" value="'+(a.tarih||'')+'"></div>'
-          +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="eavt-'+i+'-'+ai+'" value="'+(a.tutar||0)+'"></div>'
-          +'<div class="fg"><label>Açıklama</label><input type="text" id="eava-'+i+'-'+ai+'" value="'+(a.aciklama||'').replace(/"/g,"&quot;")+'"></div>'
-          +'<button class="sm-btn" style="align-self:flex-end" onclick="saveAvukat('+i+','+ai+')">Kaydet</button>'
-          +'<button class="sm-btn" style="align-self:flex-end" onclick="cancelAvukat('+i+','+ai+')">İptal</button>'
+          +'<div class="fg"><label>Avukat Adı</label><input type="text" id="eav-'+cid+'-'+ai+'" value="'+(a.avukat||'').replace(/"/g,"&quot;")+'"></div>'
+          +'<div class="fg"><label>Tarih</label><input type="date" id="eavd-'+cid+'-'+ai+'" value="'+(a.tarih||'')+'"></div>'
+          +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="eavt-'+cid+'-'+ai+'" value="'+(a.tutar||0)+'"></div>'
+          +'<div class="fg"><label>Açıklama</label><input type="text" id="eava-'+cid+'-'+ai+'" value="'+(a.aciklama||'').replace(/"/g,"&quot;")+'"></div>'
+          +'<button class="sm-btn" style="align-self:flex-end" onclick="saveAvukat(\''+cid+'\','+ai+','+a.id+')">Kaydet</button>'
+          +'<button class="sm-btn" style="align-self:flex-end" onclick="cancelAvukat(\''+cid+'\','+ai+')">İptal</button>'
           +'</div></div>';
       }).join('');
     var avukatTotal=totalAvukat(c);
     var ozetText=c.ozet||'';
 
-    // ---- BİLGİ DÜZENLE PANE ----
+    // BİLGİ PANE
     var bilgiPane=''
       +'<div class="bilgi-form">'
-        +'<div class="fg"><label>Ad Soyad</label><input type="text" id="ci-name-'+i+'" value="'+(c.name||'').replace(/"/g,"&quot;")+'"></div>'
-        +'<div class="fg"><label>TCKN</label><input type="text" id="ci-tckn-'+i+'" value="'+(c.tckn||'')+'"></div>'
-        +'<div class="fg"><label>Mahkeme</label><input type="text" id="ci-court-'+i+'" value="'+(c.court||'').replace(/"/g,"&quot;")+'"></div>'
-        +'<div class="fg"><label>Şehir / Savcılık</label><input type="text" id="ci-city-'+i+'" value="'+(c.city||'').replace(/"/g,"&quot;")+'"></div>'
-        +'<div class="fg"><label>Dosya No</label><input type="text" id="ci-dosya-'+i+'" value="'+(c.dosya||'').replace(/"/g,"&quot;")+'"></div>'
-        +'<div class="fg"><label>Anlaşılan Ücret (TRY)</label><input type="number" id="ci-agreed-'+i+'" value="'+(c.agreed||0)+'"></div>'
+        +'<div class="fg"><label>Ad Soyad</label><input type="text" id="ci-name-'+cid+'" value="'+(c.name||'').replace(/"/g,"&quot;")+'"></div>'
+        +'<div class="fg"><label>TCKN</label><input type="text" id="ci-tckn-'+cid+'" value="'+(c.tckn||'')+'"></div>'
+        +'<div class="fg"><label>Mahkeme</label><input type="text" id="ci-court-'+cid+'" value="'+(c.court||'').replace(/"/g,"&quot;")+'"></div>'
+        +'<div class="fg"><label>Şehir / Savcılık</label><input type="text" id="ci-city-'+cid+'" value="'+(c.city||'').replace(/"/g,"&quot;")+'"></div>'
+        +'<div class="fg"><label>Dosya No</label><input type="text" id="ci-dosya-'+cid+'" value="'+(c.dosya||'').replace(/"/g,"&quot;")+'"></div>'
+        +'<div class="fg"><label>Anlaşılan Ücret (TRY)</label><input type="number" id="ci-agreed-'+cid+'" value="'+(c.agreed||0)+'"></div>'
       +'</div>'
       +'<div class="bilgi-actions">'
-        +'<button class="sm-btn" style="background:var(--ink);color:#fff;border-color:var(--ink)" onclick="saveClientInfo('+i+')">Değişiklikleri Kaydet</button>'
-        +'<button class="sm-btn" onclick="cancelClientInfo('+i+')">İptal</button>'
+        +'<button class="sm-btn" style="background:var(--ink);color:#fff;border-color:var(--ink)" onclick="saveClientInfo(\''+cid+'\')">Değişiklikleri Kaydet</button>'
+        +'<button class="sm-btn" onclick="cancelClientInfo(\''+cid+'\')">İptal</button>'
       +'</div>';
 
     return '<div class="card">'
-      +'<div class="card-header" onclick="tog('+i+')">'
+      +'<div class="card-header" onclick="tog(\''+cid+'\')">'
         +'<div style="display:flex;align-items:center;gap:9px">'
           +'<div class="avatar">'+ini(c.name)+'</div>'
           +'<div><div class="client-name">'+c.name+'</div><div class="client-sub">'+meta+'</div></div>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:7px">'+badge
           +'<span style="font-size:11px;color:var(--ink2)">'+(b>0?fmt(b):'')+'</span>'
-          +'<button class="edit-btn" onclick="event.stopPropagation();showInfoEdit('+i+')" style="padding:3px 8px">Düzenle</button>'
-          +'<span class="arrow" id="arr-'+i+'">▼</span>'
+          +'<button class="edit-btn" onclick="event.stopPropagation();showInfoEdit(\''+cid+'\')" style="padding:3px 8px">Düzenle</button>'
+          +'<span class="arrow" id="arr-'+cid+'">▼</span>'
         +'</div>'
       +'</div>'
-      +'<div class="card-body" id="bd-'+i+'">'
+      +'<div class="card-body" id="bd-'+cid+'">'
         +'<div class="inner-tabs">'
-          +'<button class="itab active" id="it-odeme-'+i+'" onclick="showInner('+i+',\'odeme\')">Ödeme</button>'
-          +'<button class="itab" id="it-masraf-'+i+'" onclick="showInner('+i+',\'masraf\')">Masraflar</button>'
-          +'<button class="itab" id="it-avukat-'+i+'" onclick="showInner('+i+',\'avukat\')">Avukat Payları</button>'
-          +'<button class="itab" id="it-ozet-'+i+'" onclick="showInner('+i+',\'ozet\')">Dosya Özeti</button>'
-          +'<button class="itab" id="it-bilgi-'+i+'" onclick="showInner('+i+',\'bilgi\')" style="color:var(--blue)">Bilgileri Düzenle</button>'
+          +'<button class="itab active" id="it-odeme-'+cid+'" onclick="showInner(\''+cid+'\',\'odeme\')">Ödeme</button>'
+          +'<button class="itab" id="it-masraf-'+cid+'" onclick="showInner(\''+cid+'\',\'masraf\')">Masraflar</button>'
+          +'<button class="itab" id="it-avukat-'+cid+'" onclick="showInner(\''+cid+'\',\'avukat\')">Avukat Payları</button>'
+          +'<button class="itab" id="it-ozet-'+cid+'" onclick="showInner(\''+cid+'\',\'ozet\')">Dosya Özeti</button>'
+          +'<button class="itab" id="it-bilgi-'+cid+'" onclick="showInner(\''+cid+'\',\'bilgi\')" style="color:var(--blue)">Bilgileri Düzenle</button>'
         +'</div>'
-
-        +'<div class="ipane active" id="ip-odeme-'+i+'">'
+        +'<div class="ipane active" id="ip-odeme-'+cid+'">'
           +'<div class="stats3">'
             +'<div class="stat"><div class="stat-l">Anlaşılan</div><div class="stat-v">'+fmt(c.agreed)+'</div></div>'
             +'<div class="stat"><div class="stat-l">Tahsil</div><div class="stat-v" style="color:var(--green)">'+fmt(paid(c))+'</div></div>'
@@ -540,62 +578,55 @@ function renderClients(){
           +'</div>'
           +'<div class="pbar"><div class="pfill" style="width:'+pct(c)+'%"></div></div>'
           +'<div style="font-size:10px;color:var(--ink3);text-align:right;margin-bottom:10px">%'+pct(c)+' tahsil edildi</div>'
-          +'<div class="slabel">Ödeme geçmişi</div>'
-          +'<div>'+pays+'</div>'
-          +'<button class="sm-btn" onclick="togForm(\'pay\','+i+')">+ Ödeme ekle</button>'
-          +'<div class="add-form" id="form-pay-'+i+'">'
+          +'<div class="slabel">Ödeme geçmişi</div><div>'+pays+'</div>'
+          +'<button class="sm-btn" onclick="togForm(\'pay\',\''+cid+'\')">+ Ödeme ekle</button>'
+          +'<div class="add-form" id="form-pay-'+cid+'">'
             +'<div class="form-row">'
-              +'<div class="fg"><label>Tarih</label><input type="date" id="pd-'+i+'"></div>'
-              +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="pa-'+i+'" placeholder="0"></div>'
-              +'<div class="fg"><label>Avukat / Kişi</label><input type="text" id="pp-'+i+'" placeholder="Ad Soyad"></div>'
-              +'<button class="sm-btn" style="align-self:flex-end" onclick="addPay('+i+')">Kaydet</button>'
+              +'<div class="fg"><label>Tarih</label><input type="date" id="pd-'+cid+'"></div>'
+              +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="pa-'+cid+'" placeholder="0"></div>'
+              +'<div class="fg"><label>Avukat / Kişi</label><input type="text" id="pp-'+cid+'" placeholder="Ad Soyad"></div>'
+              +'<button class="sm-btn" style="align-self:flex-end" onclick="addPay(\''+cid+'\')">Kaydet</button>'
             +'</div>'
           +'</div>'
         +'</div>'
-
-        +'<div class="ipane" id="ip-masraf-'+i+'">'
-          +'<div class="slabel">Dosya masrafları</div>'
-          +'<div>'+masraflar+'</div>'
+        +'<div class="ipane" id="ip-masraf-'+cid+'">'
+          +'<div class="slabel">Dosya masrafları</div><div>'+maslar+'</div>'
           +(masrafTotal>0?'<div class="total-box"><span>Toplam masraf</span><span style="color:var(--red)">'+fmt(masrafTotal)+'</span></div>':'')
-          +'<button class="sm-btn" onclick="togForm(\'masraf\','+i+')">+ Masraf ekle</button>'
-          +'<div class="add-form" id="form-masraf-'+i+'">'
+          +'<button class="sm-btn" onclick="togForm(\'masraf\',\''+cid+'\')">+ Masraf ekle</button>'
+          +'<div class="add-form" id="form-masraf-'+cid+'">'
             +'<div class="form-row">'
-              +'<div class="fg"><label>Tarih</label><input type="date" id="md-'+i+'"></div>'
-              +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="mt-'+i+'" placeholder="0"></div>'
-              +'<div class="fg"><label>Açıklama</label><input type="text" id="ma-'+i+'" placeholder="Harç, bilirkişi..."></div>'
-              +'<div class="fg"><label>Yapan</label><input type="text" id="my-'+i+'" placeholder="Avukat / Büro"></div>'
-              +'<button class="sm-btn" style="align-self:flex-end" onclick="addMasraf('+i+')">Kaydet</button>'
+              +'<div class="fg"><label>Tarih</label><input type="date" id="md-'+cid+'"></div>'
+              +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="mt-'+cid+'" placeholder="0"></div>'
+              +'<div class="fg"><label>Açıklama</label><input type="text" id="ma-'+cid+'" placeholder="Harç, bilirkişi..."></div>'
+              +'<div class="fg"><label>Yapan</label><input type="text" id="my-'+cid+'" placeholder="Avukat / Büro"></div>'
+              +'<button class="sm-btn" style="align-self:flex-end" onclick="addMasraf(\''+cid+'\')">Kaydet</button>'
             +'</div>'
           +'</div>'
         +'</div>'
-
-        +'<div class="ipane" id="ip-avukat-'+i+'">'
-          +'<div class="slabel">Avukat payları</div>'
-          +'<div>'+avukatlar+'</div>'
+        +'<div class="ipane" id="ip-avukat-'+cid+'">'
+          +'<div class="slabel">Avukat payları</div><div>'+avlar+'</div>'
           +(avukatTotal>0?'<div class="total-box"><span>Toplam dağıtılan</span><span>'+fmt(avukatTotal)+'</span></div>':'')
-          +'<button class="sm-btn" onclick="togForm(\'avukat\','+i+')">+ Pay ekle</button>'
-          +'<div class="add-form" id="form-avukat-'+i+'">'
+          +'<button class="sm-btn" onclick="togForm(\'avukat\',\''+cid+'\')">+ Pay ekle</button>'
+          +'<div class="add-form" id="form-avukat-'+cid+'">'
             +'<div class="form-row">'
-              +'<div class="fg"><label>Avukat Adı</label><input type="text" id="av-'+i+'" placeholder="Ad Soyad"></div>'
-              +'<div class="fg"><label>Tarih</label><input type="date" id="avd-'+i+'"></div>'
-              +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="avt-'+i+'" placeholder="0"></div>'
-              +'<div class="fg"><label>Açıklama</label><input type="text" id="ava-'+i+'" placeholder="Duruşma ücreti..."></div>'
-              +'<button class="sm-btn" style="align-self:flex-end" onclick="addAvukat('+i+')">Kaydet</button>'
+              +'<div class="fg"><label>Avukat Adı</label><input type="text" id="av-'+cid+'" placeholder="Ad Soyad"></div>'
+              +'<div class="fg"><label>Tarih</label><input type="date" id="avd-'+cid+'"></div>'
+              +'<div class="fg"><label>Tutar (TRY)</label><input type="number" id="avt-'+cid+'" placeholder="0"></div>'
+              +'<div class="fg"><label>Açıklama</label><input type="text" id="ava-'+cid+'" placeholder="Duruşma ücreti..."></div>'
+              +'<button class="sm-btn" style="align-self:flex-end" onclick="addAvukat(\''+cid+'\')">Kaydet</button>'
             +'</div>'
           +'</div>'
         +'</div>'
-
-        +'<div class="ipane" id="ip-ozet-'+i+'">'
+        +'<div class="ipane" id="ip-ozet-'+cid+'">'
           +'<div class="slabel">Dava notları</div>'
-          +'<div class="ozet-view'+(ozetText?'':' empty')+'" id="ov-'+i+'" onclick="editOzet('+i+')">'+(ozetText||'Henüz not eklenmemiş. Düzenlemek için tıklayın.')+'</div>'
-          +'<textarea class="ozet-edit" id="oe-'+i+'" placeholder="Davanın konusu, suçlama, önemli gelişmeler...">'+ozetText+'</textarea>'
-          +'<div class="edit-actions" id="ea-'+i+'">'
-            +'<button class="sm-btn" onclick="saveOzet('+i+')">Kaydet</button>'
-            +'<button class="sm-btn" onclick="cancelOzet('+i+')">İptal</button>'
+          +'<div class="ozet-view'+(ozetText?'':' empty')+'" id="ov-'+cid+'" onclick="editOzet(\''+cid+'\')">'+(ozetText||'Henüz not eklenmemiş. Düzenlemek için tıklayın.')+'</div>'
+          +'<textarea class="ozet-edit" id="oe-'+cid+'" placeholder="Davanın konusu, suçlama, önemli gelişmeler...">'+ozetText+'</textarea>'
+          +'<div class="edit-actions" id="ea-'+cid+'">'
+            +'<button class="sm-btn" onclick="saveOzet(\''+cid+'\')">Kaydet</button>'
+            +'<button class="sm-btn" onclick="cancelOzet(\''+cid+'\')">İptal</button>'
           +'</div>'
         +'</div>'
-
-        +'<div class="ipane" id="ip-bilgi-'+i+'">'
+        +'<div class="ipane" id="ip-bilgi-'+cid+'">'
           +'<div class="slabel">Genel Bilgiler</div>'
           +bilgiPane
         +'</div>'
@@ -604,176 +635,184 @@ function renderClients(){
   }).join('');
 }
 
-function tog(i){document.getElementById('bd-'+i).classList.toggle('open');document.getElementById('arr-'+i).classList.toggle('open')}
-function togForm(type,i){document.getElementById('form-'+type+'-'+i).classList.toggle('open')}
-
-function showInfoEdit(i){
-  var bd=document.getElementById('bd-'+i);
-  var arr=document.getElementById('arr-'+i);
+function tog(cid){document.getElementById('bd-'+cid).classList.toggle('open');document.getElementById('arr-'+cid).classList.toggle('open')}
+function togForm(type,cid){document.getElementById('form-'+type+'-'+cid).classList.toggle('open')}
+function showInfoEdit(cid){
+  var bd=document.getElementById('bd-'+cid);
+  var arr=document.getElementById('arr-'+cid);
   if(!bd.classList.contains('open')){bd.classList.add('open');arr.classList.add('open');}
-  showInner(i,'bilgi');
+  showInner(cid,'bilgi');
 }
 
-// ---- ADD ----
-function addPay(i){
-  var d=document.getElementById('pd-'+i).value;
-  var a=parseInt(document.getElementById('pa-'+i).value);
-  var p=document.getElementById('pp-'+i).value;
+// ============================================================
+// CRUD — ÖDEMELER
+// ============================================================
+async function addPay(cid){
+  var d=document.getElementById('pd-'+cid).value;
+  var a=parseInt(document.getElementById('pa-'+cid).value);
+  var p=document.getElementById('pp-'+cid).value;
   if(!a||a<=0) return;
-  data[i].payments.push({date:d,amount:a,avukat:p});
-  saveData(); rerender(i,'odeme');
+  setSyncStatus('loading');
+  await db.from('odemeler').insert({muvekkil_id:parseInt(cid),tarih:d,tutar:a,avukat:p});
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'odeme');},50);
 }
-function delPay(i,pi){if(!confirm('Silinsin mi?')) return; data[i].payments.splice(pi,1); saveData(); rerender(i,'odeme')}
-
-function addMasraf(i){
-  var d=document.getElementById('md-'+i).value;
-  var t=parseInt(document.getElementById('mt-'+i).value);
-  var a=document.getElementById('ma-'+i).value;
-  var y=document.getElementById('my-'+i).value;
-  if(!t||t<=0) return;
-  data[i].masraflar.push({tarih:d,tutar:t,aciklama:a||'Masraf',yapan:y||'—'});
-  saveData(); rerender(i,'masraf');
+async function delPay(pid,cid){
+  if(!confirm('Silinsin mi?')) return;
+  setSyncStatus('loading');
+  await db.from('odemeler').delete().eq('id',pid);
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'odeme');},50);
 }
-function delMasraf(i,mi){if(!confirm('Silinsin mi?')) return; data[i].masraflar.splice(mi,1); saveData(); rerender(i,'masraf')}
-
-function addAvukat(i){
-  var av=document.getElementById('av-'+i).value;
-  var d=document.getElementById('avd-'+i).value;
-  var t=parseInt(document.getElementById('avt-'+i).value);
-  var a=document.getElementById('ava-'+i).value;
-  if(!av||!t||t<=0) return;
-  data[i].avukatPaylari.push({avukat:av,tarih:d,tutar:t,aciklama:a});
-  saveData(); rerender(i,'avukat');
-}
-function delAvukat(i,ai){if(!confirm('Silinsin mi?')) return; data[i].avukatPaylari.splice(ai,1); saveData(); rerender(i,'avukat')}
-
-// ---- EDIT ÖDEME ----
-function editPay(i,pi){
-  document.getElementById('epr-'+i+'-'+pi).style.display='none';
-  document.getElementById('ep-'+i+'-'+pi).classList.add('open');
-}
-function cancelPay(i,pi){
-  document.getElementById('ep-'+i+'-'+pi).classList.remove('open');
-  document.getElementById('epr-'+i+'-'+pi).style.display='';
-}
-function savePay(i,pi){
-  var d=document.getElementById('epd-'+i+'-'+pi).value;
-  var a=parseInt(document.getElementById('epa-'+i+'-'+pi).value);
-  var p=document.getElementById('epp-'+i+'-'+pi).value;
+function editPay(cid,pi,pid){document.getElementById('epr-'+cid+'-'+pi).style.display='none';document.getElementById('ep-'+cid+'-'+pi).classList.add('open');}
+function cancelPay(cid,pi){document.getElementById('ep-'+cid+'-'+pi).classList.remove('open');document.getElementById('epr-'+cid+'-'+pi).style.display='';}
+async function savePay(cid,pi,pid){
+  var d=document.getElementById('epd-'+cid+'-'+pi).value;
+  var a=parseInt(document.getElementById('epa-'+cid+'-'+pi).value);
+  var p=document.getElementById('epp-'+cid+'-'+pi).value;
   if(!a||a<=0) return;
-  data[i].payments[pi]={date:d,amount:a,avukat:p};
-  saveData(); rerender(i,'odeme');
+  setSyncStatus('loading');
+  await db.from('odemeler').update({tarih:d,tutar:a,avukat:p}).eq('id',pid);
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'odeme');},50);
 }
 
-// ---- EDIT MASRAF ----
-function editMasraf(i,mi){
-  document.getElementById('emr-'+i+'-'+mi).style.display='none';
-  document.getElementById('em-'+i+'-'+mi).classList.add('open');
-}
-function cancelMasraf(i,mi){
-  document.getElementById('em-'+i+'-'+mi).classList.remove('open');
-  document.getElementById('emr-'+i+'-'+mi).style.display='';
-}
-function saveMasraf(i,mi){
-  var d=document.getElementById('emd-'+i+'-'+mi).value;
-  var t=parseInt(document.getElementById('emt-'+i+'-'+mi).value);
-  var a=document.getElementById('ema-'+i+'-'+mi).value;
-  var y=document.getElementById('emy-'+i+'-'+mi).value;
+// ============================================================
+// CRUD — MASRAFLAR
+// ============================================================
+async function addMasraf(cid){
+  var d=document.getElementById('md-'+cid).value;
+  var t=parseInt(document.getElementById('mt-'+cid).value);
+  var a=document.getElementById('ma-'+cid).value||'Masraf';
+  var y=document.getElementById('my-'+cid).value||'—';
   if(!t||t<=0) return;
-  data[i].masraflar[mi]={tarih:d,tutar:t,aciklama:a||'Masraf',yapan:y||'—'};
-  saveData(); rerender(i,'masraf');
+  setSyncStatus('loading');
+  await db.from('masraflar').insert({muvekkil_id:parseInt(cid),tarih:d,tutar:t,aciklama:a,yapan:y});
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'masraf');},50);
+}
+async function delMasraf(mid,cid){
+  if(!confirm('Silinsin mi?')) return;
+  setSyncStatus('loading');
+  await db.from('masraflar').delete().eq('id',mid);
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'masraf');},50);
+}
+function editMasraf(cid,mi,mid){document.getElementById('emr-'+cid+'-'+mi).style.display='none';document.getElementById('em-'+cid+'-'+mi).classList.add('open');}
+function cancelMasraf(cid,mi){document.getElementById('em-'+cid+'-'+mi).classList.remove('open');document.getElementById('emr-'+cid+'-'+mi).style.display='';}
+async function saveMasraf(cid,mi,mid){
+  var d=document.getElementById('emd-'+cid+'-'+mi).value;
+  var t=parseInt(document.getElementById('emt-'+cid+'-'+mi).value);
+  var a=document.getElementById('ema-'+cid+'-'+mi).value||'Masraf';
+  var y=document.getElementById('emy-'+cid+'-'+mi).value||'—';
+  if(!t||t<=0) return;
+  setSyncStatus('loading');
+  await db.from('masraflar').update({tarih:d,tutar:t,aciklama:a,yapan:y}).eq('id',mid);
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'masraf');},50);
 }
 
-// ---- EDIT AVUKAT PAYI ----
-function editAvukat(i,ai){
-  document.getElementById('ear-'+i+'-'+ai).style.display='none';
-  document.getElementById('ea2-'+i+'-'+ai).classList.add('open');
-}
-function cancelAvukat(i,ai){
-  document.getElementById('ea2-'+i+'-'+ai).classList.remove('open');
-  document.getElementById('ear-'+i+'-'+ai).style.display='';
-}
-function saveAvukat(i,ai){
-  var av=document.getElementById('eav-'+i+'-'+ai).value;
-  var d=document.getElementById('eavd-'+i+'-'+ai).value;
-  var t=parseInt(document.getElementById('eavt-'+i+'-'+ai).value);
-  var a=document.getElementById('eava-'+i+'-'+ai).value;
+// ============================================================
+// CRUD — AVUKAT PAYLARI
+// ============================================================
+async function addAvukat(cid){
+  var av=document.getElementById('av-'+cid).value;
+  var d=document.getElementById('avd-'+cid).value;
+  var t=parseInt(document.getElementById('avt-'+cid).value);
+  var a=document.getElementById('ava-'+cid).value;
   if(!av||!t||t<=0) return;
-  data[i].avukatPaylari[ai]={avukat:av,tarih:d,tutar:t,aciklama:a};
-  saveData(); rerender(i,'avukat');
+  setSyncStatus('loading');
+  await db.from('avukat_paylari').insert({muvekkil_id:parseInt(cid),avukat:av,tarih:d,tutar:t,aciklama:a});
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'avukat');},50);
+}
+async function delAvukat(aid,cid){
+  if(!confirm('Silinsin mi?')) return;
+  setSyncStatus('loading');
+  await db.from('avukat_paylari').delete().eq('id',aid);
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'avukat');},50);
+}
+function editAvukat(cid,ai,aid){document.getElementById('ear-'+cid+'-'+ai).style.display='none';document.getElementById('ea2-'+cid+'-'+ai).classList.add('open');}
+function cancelAvukat(cid,ai){document.getElementById('ea2-'+cid+'-'+ai).classList.remove('open');document.getElementById('ear-'+cid+'-'+ai).style.display='';}
+async function saveAvukat(cid,ai,aid){
+  var av=document.getElementById('eav-'+cid+'-'+ai).value;
+  var d=document.getElementById('eavd-'+cid+'-'+ai).value;
+  var t=parseInt(document.getElementById('eavt-'+cid+'-'+ai).value);
+  var a=document.getElementById('eava-'+cid+'-'+ai).value;
+  if(!av||!t||t<=0) return;
+  setSyncStatus('loading');
+  await db.from('avukat_paylari').update({avukat:av,tarih:d,tutar:t,aciklama:a}).eq('id',aid);
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'avukat');},50);
 }
 
-// ---- EDIT MÜVEKKİL BİLGİLERİ ----
-function saveClientInfo(i){
-  var name=document.getElementById('ci-name-'+i).value.trim();
-  var agreed=parseInt(document.getElementById('ci-agreed-'+i).value)||0;
+// ============================================================
+// OZET & BİLGİ
+// ============================================================
+function editOzet(cid){
+  document.getElementById('ov-'+cid).style.display='none';
+  document.getElementById('oe-'+cid).style.display='block';
+  document.getElementById('ea-'+cid).classList.add('open');
+  document.getElementById('oe-'+cid).focus();
+}
+async function saveOzet(cid){
+  var val=document.getElementById('oe-'+cid).value.trim();
+  setSyncStatus('loading');
+  await db.from('muvekkillar').update({ozet:val}).eq('id',parseInt(cid));
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'ozet');},50);
+}
+function cancelOzet(cid){
+  var c=clients.find(function(x){return x.id==cid;});
+  document.getElementById('oe-'+cid).value=c?c.ozet||'':'';
+  document.getElementById('ov-'+cid).style.display='block';
+  document.getElementById('oe-'+cid).style.display='none';
+  document.getElementById('ea-'+cid).classList.remove('open');
+}
+async function saveClientInfo(cid){
+  var name=document.getElementById('ci-name-'+cid).value.trim();
+  var agreed=parseInt(document.getElementById('ci-agreed-'+cid).value)||0;
   if(!name||!agreed){alert('Ad Soyad ve Anlaşılan Ücret boş bırakılamaz.');return;}
-  data[i].name=name;
-  data[i].tckn=document.getElementById('ci-tckn-'+i).value.trim();
-  data[i].court=document.getElementById('ci-court-'+i).value.trim();
-  data[i].city=document.getElementById('ci-city-'+i).value.trim();
-  data[i].dosya=document.getElementById('ci-dosya-'+i).value.trim();
-  data[i].agreed=agreed;
-  saveData(); rerender(i,'bilgi');
+  setSyncStatus('loading');
+  await db.from('muvekkillar').update({
+    name:name,
+    tckn:document.getElementById('ci-tckn-'+cid).value.trim(),
+    court:document.getElementById('ci-court-'+cid).value.trim(),
+    city:document.getElementById('ci-city-'+cid).value.trim(),
+    dosya:document.getElementById('ci-dosya-'+cid).value.trim(),
+    agreed:agreed
+  }).eq('id',parseInt(cid));
+  await loadAll();
+  setTimeout(function(){tog(cid);showInner(cid,'bilgi');},50);
 }
-function cancelClientInfo(i){
-  rerender(i,'bilgi');
-}
-
-function rerender(i,tab){
-  renderClients();
-  setTimeout(function(){
-    var bd=document.getElementById('bd-'+i);
-    var arr=document.getElementById('arr-'+i);
-    if(bd){bd.classList.add('open');}
-    if(arr){arr.classList.add('open');}
-    showInner(i,tab);
-  },30);
+function cancelClientInfo(cid){
+  setTimeout(function(){tog(cid);showInner(cid,'bilgi');},50);
 }
 
-// ---- DOSYA ÖZETİ ----
-function editOzet(i){
-  document.getElementById('ov-'+i).style.display='none';
-  document.getElementById('oe-'+i).style.display='block';
-  document.getElementById('ea-'+i).classList.add('open');
-  document.getElementById('oe-'+i).focus();
-}
-function saveOzet(i){
-  var val=document.getElementById('oe-'+i).value.trim();
-  data[i].ozet=val;
-  saveData();
-  var ov=document.getElementById('ov-'+i);
-  ov.textContent=val||'Henüz not eklenmemiş. Düzenlemek için tıklayın.';
-  ov.className='ozet-view'+(val?'':' empty');
-  ov.style.display='block';
-  document.getElementById('oe-'+i).style.display='none';
-  document.getElementById('ea-'+i).classList.remove('open');
-}
-function cancelOzet(i){
-  document.getElementById('oe-'+i).value=data[i].ozet||'';
-  document.getElementById('ov-'+i).style.display='block';
-  document.getElementById('oe-'+i).style.display='none';
-  document.getElementById('ea-'+i).classList.remove('open');
-}
-
-function addClient(){
+// ============================================================
+// YENİ MÜVEKKİL
+// ============================================================
+async function addClient(){
   var name=document.getElementById('n-name').value.trim();
   var agreed=parseInt(document.getElementById('n-agreed').value)||0;
   if(!name||!agreed){alert('Ad Soyad ve Anlaşılan Ücret zorunludur.');return;}
   var fp=parseInt(document.getElementById('n-firstpay').value)||0;
   var fd=document.getElementById('n-firstdate').value;
-  data.push({
-    id:Date.now(),name:name,
+  setSyncStatus('loading');
+  var res=await db.from('muvekkillar').insert({
+    name:name,
     tckn:document.getElementById('n-tckn').value,
     court:document.getElementById('n-court').value,
     city:document.getElementById('n-city').value,
     dosya:document.getElementById('n-dosya').value,
     agreed:agreed,
-    payments:fp>0?[{date:fd,amount:fp,avukat:''}]:[],
-    masraflar:[],avukatPaylari:[],
     ozet:document.getElementById('n-ozet').value.trim()
-  });
-  saveData();
+  }).select().single();
+  if(res.data&&fp>0){
+    await db.from('odemeler').insert({muvekkil_id:res.data.id,tarih:fd,tutar:fp,avukat:''});
+  }
+  await loadAll();
   ['n-name','n-tckn','n-court','n-city','n-dosya','n-agreed','n-firstpay','n-firstdate','n-ozet'].forEach(function(id){document.getElementById(id).value='';});
   var msg=document.getElementById('success-msg');
   msg.style.display='block';
@@ -783,76 +822,48 @@ function addClient(){
 // ============================================================
 // GİDERLER
 // ============================================================
-function giderAyDeg(d){
-  giderAy+=d;
-  if(giderAy<0){giderAy=11;giderYil--;}
-  if(giderAy>11){giderAy=0;giderYil++;}
-  updateGiderAyLabel();
-  renderGiderler();
-}
-
-function updateGiderAyLabel(){
-  document.getElementById('gider-ay-label').textContent=ayStr(giderYil,giderAy);
-}
-
-function giderEkle(){
+function giderAyDeg(d){giderAy+=d;if(giderAy<0){giderAy=11;giderYil--;}if(giderAy>11){giderAy=0;giderYil++;}updateGiderAyLabel();renderGiderler();}
+function updateGiderAyLabel(){document.getElementById('gider-ay-label').textContent=ayStr(giderYil,giderAy);}
+async function giderEkle(){
   var kat=document.getElementById('g-kategori').value;
   var tar=document.getElementById('g-tarih').value;
   var tut=parseInt(document.getElementById('g-tutar').value)||0;
-  var ac=document.getElementById('g-aciklama').value.trim();
+  var ac=document.getElementById('g-aciklama').value.trim()||kat;
   if(!tut||tut<=0){alert('Tutar giriniz.');return;}
-  var yil=giderYil, ay=giderAy;
-  if(tar){var d=new Date(tar);yil=d.getFullYear();ay=d.getMonth();}
-  giderler.push({id:Date.now(),kategori:kat,tarih:tar,tutar:tut,aciklama:ac||kat,yil:yil,ay:ay});
-  saveGiderler();
+  var yil=giderYil,ay=giderAy;
+  if(tar){var dd=new Date(tar);yil=dd.getFullYear();ay=dd.getMonth();}
+  setSyncStatus('loading');
+  await db.from('giderler').insert({kategori:kat,tarih:tar,tutar:tut,aciklama:ac,yil:yil,ay:ay});
+  await loadAll();
   document.getElementById('g-tutar').value='';
   document.getElementById('g-aciklama').value='';
   renderGiderler();
 }
-
-function delGider(id){
+async function delGider(id){
   if(!confirm('Silinsin mi?')) return;
-  giderler=giderler.filter(function(g){return g.id!==id;});
-  saveGiderler();
+  setSyncStatus('loading');
+  await db.from('giderler').delete().eq('id',id);
+  await loadAll();
   renderGiderler();
 }
-
 function renderGiderler(){
-  var ayGiderler=giderler.filter(function(g){return g.yil===giderYil&&g.ay===giderAy;});
-  var toplamAy=ayGiderler.reduce(function(s,g){return s+g.tutar;},0);
-
-  var sumHTML='<div class="gider-sum-card"><div class="label">Bu Ay Toplam Gider</div><div class="value" style="color:var(--red)">'+fmt(toplamAy)+'</div></div>';
-  sumHTML+='<div class="gider-sum-card"><div class="label">Kalem Sayısı</div><div class="value">'+ayGiderler.length+'</div></div>';
-  document.getElementById('gider-monthly-summary').innerHTML=sumHTML;
-
-  if(!ayGiderler.length){
-    document.getElementById('gider-list').innerHTML='<div class="empty-state">Bu ay için gider girilmemiş</div>';
-    return;
-  }
-  var rows=ayGiderler.slice().sort(function(a,b){
-    return (b.tarih||'').localeCompare(a.tarih||'');
-  }).map(function(g){
+  updateGiderAyLabel();
+  var ayGid=giderler.filter(function(g){return g.yil===giderYil&&g.ay===giderAy;});
+  var toplam=ayGid.reduce(function(s,g){return s+g.tutar;},0);
+  document.getElementById('gider-monthly-summary').innerHTML=
+    '<div class="gider-sum-card"><div class="label">Bu Ay Toplam Gider</div><div class="value" style="color:var(--red)">'+fmt(toplam)+'</div></div>'
+    +'<div class="gider-sum-card"><div class="label">Kalem Sayısı</div><div class="value">'+ayGid.length+'</div></div>';
+  if(!ayGid.length){document.getElementById('gider-list').innerHTML='<div class="empty-state">Bu ay için gider girilmemiş</div>';return;}
+  var rows=ayGid.slice().sort(function(a,b){return (b.tarih||'').localeCompare(a.tarih||'');}).map(function(g){
     var d=g.tarih?new Date(g.tarih).toLocaleDateString('tr-TR'):'—';
     return '<div class="gider-row">'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<span class="gider-cat-tag">'+g.kategori+'</span>'
-        +'<div>'
-          +'<div style="font-weight:500">'+g.aciklama+'</div>'
-          +'<div style="font-size:11px;color:var(--ink3)">'+d+'</div>'
-        +'</div>'
-      +'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<span style="font-weight:600;color:var(--red)">'+fmt(g.tutar)+'</span>'
-        +'<button class="del-btn" onclick="delGider('+g.id+')">Sil</button>'
-      +'</div>'
-    +'</div>';
+      +'<div style="display:flex;align-items:center;gap:8px"><span class="gider-cat-tag">'+g.kategori+'</span>'
+      +'<div><div style="font-weight:500">'+g.aciklama+'</div><div style="font-size:11px;color:var(--ink3)">'+d+'</div></div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600;color:var(--red)">'+fmt(g.tutar)+'</span>'
+      +'<button class="del-btn" onclick="delGider('+g.id+')">Sil</button></div></div>';
   }).join('');
-
   document.getElementById('gider-list').innerHTML=
-    '<div class="gider-list-header">'
-      +'<span class="gider-list-title">Gider Kalemleri — '+ayStr(giderYil,giderAy)+'</span>'
-      +'<span style="font-size:12px;font-weight:600;color:var(--red)">'+fmt(toplamAy)+'</span>'
-    +'</div>'+rows;
+    '<div class="gider-list-header"><span class="gider-list-title">'+ayStr(giderYil,giderAy)+'</span><span style="font-size:12px;font-weight:600;color:var(--red)">'+fmt(toplam)+'</span></div>'+rows;
 }
 
 // ============================================================
@@ -860,14 +871,11 @@ function renderGiderler(){
 // ============================================================
 function setPeriod(p){
   currentPeriod=p;
-  document.querySelectorAll('.period-tab').forEach(function(t,i){
-    t.classList.toggle('active',['aylik','ucaylik','yillik'][i]===p);
-  });
+  document.querySelectorAll('.period-tab').forEach(function(t,i){t.classList.toggle('active',['aylik','ucaylik','yillik'][i]===p);});
   renderOzet();
 }
-
 function gelirForMonth(y,m){
-  return data.reduce(function(s,c){
+  return clients.reduce(function(s,c){
     return s+(c.payments||[]).reduce(function(s2,p){
       if(!p.date) return s2;
       var d=new Date(p.date);
@@ -875,84 +883,31 @@ function gelirForMonth(y,m){
     },0);
   },0);
 }
-
-function giderForMonth(y,m){
-  return giderler.filter(function(g){return g.yil===y&&g.ay===m;})
-    .reduce(function(s,g){return s+g.tutar;},0);
-}
-
+function giderForMonth(y,m){return giderler.filter(function(g){return g.yil===y&&g.ay===m;}).reduce(function(s,g){return s+g.tutar;},0);}
 function renderOzet(){
-  var nowY=now.getFullYear(), nowM=now.getMonth();
-
-  var toplamGelir=data.reduce(function(s,c){return s+paid(c);},0);
+  var nowY=now.getFullYear(),nowM=now.getMonth();
+  var toplamGelir=clients.reduce(function(s,c){return s+paid(c);},0);
   var toplamGider=giderler.reduce(function(s,g){return s+g.tutar;},0);
   var netKar=toplamGelir-toplamGider;
-  var toplamAnlasman=data.reduce(function(s,c){return s+c.agreed;},0);
-  var toplamBakiye=toplamAnlasman-toplamGelir;
-
+  var toplamAnlasman=clients.reduce(function(s,c){return s+c.agreed;},0);
   document.getElementById('ozet-hero').innerHTML=
-    '<h2>Genel Finansal Özet</h2>'
-    +'<div class="hero-grid">'
-      +'<div class="hero-stat"><div class="hl">Toplam Tahsilat</div><div class="hv pos">'+fmt(toplamGelir)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Toplam Gider</div><div class="hv neg">'+fmt(toplamGider)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Net Kar/Zarar</div><div class="hv '+(netKar>=0?'pos':'neg')+'">'+fmt(netKar)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Anlaşılan (Toplam)</div><div class="hv">'+fmt(toplamAnlasman)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Tahsil Edilmemiş</div><div class="hv neg">'+fmt(toplamBakiye)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Aktif Müvekkil</div><div class="hv">'+data.length+'</div></div>'
+    '<h2>Genel Finansal Özet</h2><div class="hero-grid">'
+    +'<div class="hero-stat"><div class="hl">Toplam Tahsilat</div><div class="hv pos">'+fmt(toplamGelir)+'</div></div>'
+    +'<div class="hero-stat"><div class="hl">Toplam Gider</div><div class="hv neg">'+fmt(toplamGider)+'</div></div>'
+    +'<div class="hero-stat"><div class="hl">Net Kar/Zarar</div><div class="hv '+(netKar>=0?'pos':'neg')+'">'+fmt(netKar)+'</div></div>'
+    +'<div class="hero-stat"><div class="hl">Anlaşılan (Toplam)</div><div class="hv">'+fmt(toplamAnlasman)+'</div></div>'
+    +'<div class="hero-stat"><div class="hl">Tahsil Edilmemiş</div><div class="hv neg">'+fmt(toplamAnlasman-toplamGelir)+'</div></div>'
+    +'<div class="hero-stat"><div class="hl">Aktif Müvekkil</div><div class="hv">'+clients.length+'</div></div>'
     +'</div>';
-
   var rows=[];
-  if(currentPeriod==='aylik'){
-    for(var k=11;k>=0;k--){
-      var d=new Date(nowY,nowM-k,1);
-      var y=d.getFullYear(), m=d.getMonth();
-      var gel=gelirForMonth(y,m);
-      var gid=giderForMonth(y,m);
-      rows.push({label:ayStr(y,m),gelir:gel,gider:gid,net:gel-gid});
-    }
-  } else if(currentPeriod==='ucaylik'){
-    for(var q=7;q>=0;q--){
-      var qDate=new Date(nowY,nowM - q*3,1);
-      var qY=qDate.getFullYear(), qM=qDate.getMonth();
-      var qStart=Math.floor(qM/3)*3;
-      var qLabel=(qStart===0?'Q1':qStart===3?'Q2':qStart===6?'Q3':'Q4')+' '+qY;
-      var gel=0,gid=0;
-      for(var mm=qStart;mm<qStart+3;mm++){gel+=gelirForMonth(qY,mm);gid+=giderForMonth(qY,mm);}
-      if(!rows.find(function(r){return r.label===qLabel;}))
-        rows.push({label:qLabel,gelir:gel,gider:gid,net:gel-gid});
-    }
-  } else {
-    for(var yr=nowY-4;yr<=nowY;yr++){
-      var gel=0,gid=0;
-      for(var mm=0;mm<12;mm++){gel+=gelirForMonth(yr,mm);gid+=giderForMonth(yr,mm);}
-      rows.push({label:yr+' Yılı',gelir:gel,gider:gid,net:gel-gid});
-    }
-  }
-
-  var totalGel=rows.reduce(function(s,r){return s+r.gelir;},0);
-  var totalGid=rows.reduce(function(s,r){return s+r.gider;},0);
-  var totalNet=totalGel-totalGid;
-
-  var tableRows=rows.map(function(r){
-    return '<tr>'
-      +'<td class="bold">'+r.label+'</td>'
-      +'<td class="pos">'+fmt(r.gelir)+'</td>'
-      +'<td class="neg">'+fmt(r.gider)+'</td>'
-      +'<td class="'+(r.net>=0?'pos':'neg')+' bold">'+fmt(r.net)+'</td>'
-    +'</tr>';
-  }).join('');
-
+  if(currentPeriod==='aylik'){for(var k=11;k>=0;k--){var d=new Date(nowY,nowM-k,1);var y=d.getFullYear(),m=d.getMonth();var gel=gelirForMonth(y,m),gid=giderForMonth(y,m);rows.push({label:ayStr(y,m),gelir:gel,gider:gid,net:gel-gid});}}
+  else if(currentPeriod==='ucaylik'){for(var q=7;q>=0;q--){var qd=new Date(nowY,nowM-q*3,1);var qY=qd.getFullYear(),qM=qd.getMonth();var qs=Math.floor(qM/3)*3;var ql=(qs===0?'Q1':qs===3?'Q2':qs===6?'Q3':'Q4')+' '+qY;var gel=0,gid=0;for(var mm=qs;mm<qs+3;mm++){gel+=gelirForMonth(qY,mm);gid+=giderForMonth(qY,mm);}if(!rows.find(function(r){return r.label===ql;}))rows.push({label:ql,gelir:gel,gider:gid,net:gel-gid});}}
+  else{for(var yr=nowY-4;yr<=nowY;yr++){var gel=0,gid=0;for(var mm=0;mm<12;mm++){gel+=gelirForMonth(yr,mm);gid+=giderForMonth(yr,mm);}rows.push({label:yr+' Yılı',gelir:gel,gider:gid,net:gel-gid});}}
+  var tG=rows.reduce(function(s,r){return s+r.gelir;},0),tD=rows.reduce(function(s,r){return s+r.gider;},0),tN=tG-tD;
   document.getElementById('ozet-report').innerHTML=
-    '<table class="report-table">'
-      +'<thead><tr><th>Dönem</th><th>Gelir (Tahsilat)</th><th>Gider</th><th>Net Kar/Zarar</th></tr></thead>'
-      +'<tbody>'+tableRows+'</tbody>'
-      +'<tfoot><tr class="total-row">'
-        +'<td>TOPLAM</td>'
-        +'<td class="pos">'+fmt(totalGel)+'</td>'
-        +'<td class="neg">'+fmt(totalGid)+'</td>'
-        +'<td class="'+(totalNet>=0?'pos':'neg')+'">'+fmt(totalNet)+'</td>'
-      +'</tr></tfoot>'
-    +'</table>';
+    '<table class="report-table"><thead><tr><th>Dönem</th><th>Gelir (Tahsilat)</th><th>Gider</th><th>Net Kar/Zarar</th></tr></thead><tbody>'
+    +rows.map(function(r){return '<tr><td class="bold">'+r.label+'</td><td class="pos">'+fmt(r.gelir)+'</td><td class="neg">'+fmt(r.gider)+'</td><td class="'+(r.net>=0?'pos':'neg')+' bold">'+fmt(r.net)+'</td></tr>';}).join('')
+    +'</tbody><tfoot><tr class="total-row"><td>TOPLAM</td><td class="pos">'+fmt(tG)+'</td><td class="neg">'+fmt(tD)+'</td><td class="'+(tN>=0?'pos':'neg')+'">'+fmt(tN)+'</td></tr></tfoot></table>';
 }
 
 // ============================================================
@@ -961,11 +916,9 @@ function renderOzet(){
 document.getElementById('search').addEventListener('input',renderClients);
 document.getElementById('filter').addEventListener('change',renderClients);
 document.getElementById('sort').addEventListener('change',renderClients);
-
 document.getElementById('g-tarih').valueAsDate=new Date();
-
 updateGiderAyLabel();
-renderClients();
+loadAll();
 </script>
 </body>
 </html>
