@@ -160,30 +160,119 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 .gider-sum-card .label{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.3px}
 .gider-sum-card .value{font-size:14px;font-weight:600;margin-top:3px}
 
-/* ======= GENEL ÖZET ======= */
-.ozet-hero{background:var(--ink);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:16px}
-.ozet-hero h2{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;margin-bottom:12px}
-.hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.hero-stat{background:rgba(255,255,255,.08);border-radius:8px;padding:10px 12px}
-.hero-stat .hl{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.4px}
-.hero-stat .hv{font-size:15px;font-weight:600;margin-top:4px}
-.hero-stat .hv.pos{color:#4ade80}
-.hero-stat .hv.neg{color:#f87171}
+/* ======= GENEL ÖZET (RAPOR) ======= */
+@keyframes ozetRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 
-.ozet-period-tabs{display:flex;gap:4px;margin-bottom:14px}
-.period-tab{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 14px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink2);cursor:pointer;transition:all .15s}
+/* Hero — koyu defter kartı */
+.ozet-hero{position:relative;overflow:hidden;background:var(--ink);color:#fafaf9;border-radius:16px;padding:24px 26px 22px;margin-bottom:18px;box-shadow:0 18px 40px -22px rgba(28,25,23,.7)}
+.ozet-hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:14px 14px;opacity:.5;pointer-events:none}
+.ozet-hero::after{content:"";position:absolute;top:-40%;right:-10%;width:280px;height:280px;background:radial-gradient(circle,rgba(74,222,128,.14),transparent 70%);pointer-events:none}
+.hero-head{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.hero-head .eyebrow{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(250,250,249,.45);margin-bottom:5px}
+.hero-head h2{font-family:'DM Serif Display',serif;font-size:26px;font-weight:400;line-height:1.05}
+.hero-net{position:relative;text-align:right}
+.hero-net .nl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(250,250,249,.45)}
+.hero-net .nv{font-family:'DM Serif Display',serif;font-size:34px;line-height:1;margin-top:3px;letter-spacing:-.5px}
+.hero-net .nv.pos{color:#5eead4}
+.hero-net .nv.neg{color:#fca5a5}
+.hero-net .nbadge{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.hero-net .nbadge.pos{background:rgba(94,234,212,.14);color:#5eead4}
+.hero-net .nbadge.neg{background:rgba(252,165,165,.14);color:#fca5a5}
+.hero-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hero-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 13px}
+.hero-stat .hl{font-size:9.5px;color:rgba(250,250,249,.5);text-transform:uppercase;letter-spacing:.7px}
+.hero-stat .hv{font-size:17px;font-weight:600;margin-top:5px;letter-spacing:-.3px}
+.hero-stat .hv.pos{color:#86efac}
+.hero-stat .hv.neg{color:#fca5a5}
+.hero-stat .hv.blue{color:#93c5fd}
+.hero-bar{height:4px;border-radius:3px;background:rgba(255,255,255,.1);margin-top:9px;overflow:hidden}
+.hero-bar i{display:block;height:100%;border-radius:3px;background:rgba(250,250,249,.55)}
+.hero-bar i.pos{background:#4ade80}.hero-bar i.neg{background:#f87171}.hero-bar i.blue{background:#60a5fa}
+
+/* Dönem sekmeleri + yıl seçici */
+.ozet-period-tabs{display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.period-tab{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink2);cursor:pointer;transition:all .15s}
+.period-tab:hover{border-color:var(--ink3);color:var(--ink)}
 .period-tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ozet-year-select{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink2)}
+.ozet-year-select select{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}
 
-.report-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.report-table th{background:var(--surface2);padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink2);font-weight:700;border-bottom:1px solid var(--border)}
-.report-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+#ozet-report{animation:ozetRise .35s ease both}
+
+/* Rapor kartı + başlıklar */
+.report-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+.report-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.report-card-head h3{font-family:'DM Serif Display',serif;font-size:18px;font-weight:400;color:var(--ink)}
+.report-card-head .rc-sub{font-size:11px;color:var(--ink3);letter-spacing:.3px}
+.section-title{font-family:'DM Serif Display',serif;font-size:16px;font-weight:400;margin-bottom:12px;color:var(--ink)}
+
+/* Yarıyıl panelleri */
+.half-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.half-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden}
+.half-panel::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:var(--ink3)}
+.half-panel.h1::before{background:linear-gradient(90deg,var(--green),#4ade80)}
+.half-panel.h2::before{background:linear-gradient(90deg,var(--blue),#60a5fa)}
+.half-panel .hp-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);font-weight:700}
+.half-panel .hp-title{font-family:'DM Serif Display',serif;font-size:17px;color:var(--ink);margin:3px 0 14px}
+.half-panel .hp-net{font-family:'DM Serif Display',serif;font-size:30px;line-height:1;letter-spacing:-.5px;margin-bottom:3px}
+.half-panel .hp-net.pos{color:var(--green)}.half-panel .hp-net.neg{color:var(--red)}
+.half-panel .hp-netlabel{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);margin-bottom:16px}
+.hp-line{margin-bottom:11px}
+.hp-line:last-child{margin-bottom:0}
+.hp-line .hpl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px}
+.hp-line .hpl-row .lab{color:var(--ink2);display:flex;align-items:center;gap:6px}
+.hp-line .hpl-row .lab i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.hp-line .hpl-row .val{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.hp-meter{height:6px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.hp-meter i{display:block;height:100%;border-radius:4px;transition:width .5s ease}
+.dot-green,.hp-meter i.green{background:var(--green)}
+.dot-blue,.hp-meter i.blue{background:var(--blue)}
+.dot-red,.hp-meter i.red{background:var(--red)}
+
+/* CSS Bar Chart */
+.bar-chart-legend{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.bar-chart-legend .lg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
+.bar-chart-legend .lg i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:200px;padding:0 2px;border-bottom:1px solid var(--border)}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;min-width:0;height:100%}
+.bar-stack{display:flex;align-items:flex-end;justify-content:center;gap:3px;width:100%;height:100%}
+.bar{flex:1;max-width:14px;border-radius:4px 4px 0 0;min-height:2px;transform-origin:bottom;animation:barGrow .5s ease both;position:relative;cursor:default}
+.bar.gelir{background:var(--green)}
+.bar.muht{background:var(--blue)}
+.bar.gider{background:var(--red)}
+.bar:hover{filter:brightness(1.08)}
+.bar:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--ink);color:#fff;font-size:10px;font-weight:600;padding:4px 8px;border-radius:5px;z-index:5;pointer-events:none}
+.bar-x{font-size:10px;color:var(--ink3);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bar-x b{display:block;font-size:10px;font-weight:700;margin-top:1px}
+.bar-x b.pos{color:var(--green)}.bar-x b.neg{color:var(--red)}
+
+/* Rapor tablosu + satır içi mini bar */
+.report-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.report-table th{background:var(--surface2);padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);font-weight:700;border-bottom:1px solid var(--border)}
+.report-table th.num,.report-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.report-table td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.report-table tbody tr:hover{background:var(--surface2)}
 .report-table tr:last-child td{border-bottom:none}
-.report-table tr.total-row td{font-weight:700;background:var(--surface2)}
+.report-table tfoot tr.total-row td{font-weight:700;background:var(--surface2);border-top:2px solid var(--border)}
 .report-table .pos{color:var(--green)}
 .report-table .neg{color:var(--red)}
-.report-table .bold{font-weight:700}
+.report-table .blue{color:var(--blue)}
+.report-table .bold{font-weight:700;color:var(--ink)}
+.rt-period{display:flex;flex-direction:column;gap:5px}
+.rt-period .rtp-name{font-weight:700;color:var(--ink)}
+.rt-mini{height:4px;border-radius:3px;background:var(--surface2);overflow:hidden;width:90px}
+.rt-mini i{display:block;height:100%;border-radius:3px}
+.rt-mini i.pos{background:var(--green)}.rt-mini i.neg{background:var(--red)}
 
-.section-title{font-family:'DM Serif Display',serif;font-size:16px;font-weight:400;margin-bottom:12px;color:var(--ink)}
+@media(max-width:640px){
+  .hero-grid{grid-template-columns:repeat(2,1fr)}
+  .hero-net .nv{font-size:28px}
+  .half-grid{grid-template-columns:1fr}
+  .bar-chart{height:160px;gap:4px}
+  .bar{max-width:10px}
+  .rt-mini{width:50px}
+}
 
 /* AVUKAT ROW */
 .avukat-name{font-weight:600;color:var(--ink)}
@@ -416,9 +505,13 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
   <div id="ozet" class="section">
     <div class="ozet-hero" id="ozet-hero"></div>
     <div class="ozet-period-tabs">
-      <button class="period-tab active" onclick="setPeriod('aylik')">Aylık</button>
-      <button class="period-tab" onclick="setPeriod('ucaylik')">3 Aylık</button>
+      <button class="period-tab active" onclick="setPeriod('buyil')">Bu Yıl</button>
+      <button class="period-tab" onclick="setPeriod('aylik')">Aylık</button>
       <button class="period-tab" onclick="setPeriod('yillik')">Yıllık</button>
+      <span class="ozet-year-select" id="ozet-year-wrap">
+        <label for="ozet-year">Yıl</label>
+        <select id="ozet-year" onchange="setOzetYear(this.value)"></select>
+      </span>
     </div>
     <div id="ozet-report"></div>
   </div>
@@ -494,7 +587,8 @@ var giderAy  = now.getMonth(); // 0-based
 var muhtGelirYil = now.getFullYear();
 var muhtGelirAy  = now.getMonth();
 
-var currentPeriod = 'aylik';
+var currentPeriod = 'buyil';
+var ozetYil = now.getFullYear();
 
 // ============================================================
 // HELPERS
@@ -997,10 +1091,86 @@ function renderMuhtGelirler(){
 // ============================================================
 function setPeriod(p){
   currentPeriod=p;
+  var order=['buyil','aylik','yillik'];
   document.querySelectorAll('.period-tab').forEach(function(t,i){
-    t.classList.toggle('active',['aylik','ucaylik','yillik'][i]===p);
+    t.classList.toggle('active',order[i]===p);
   });
+  document.getElementById('ozet-year-wrap').style.display = (p==='buyil') ? 'flex' : 'none';
   renderOzet();
+}
+
+function setOzetYear(v){
+  ozetYil=parseInt(v,10);
+  renderOzet();
+}
+
+function ozetYilSecenekleri(){
+  var yillar={};
+  yillar[now.getFullYear()]=true;
+  data.forEach(function(c){(c.payments||[]).forEach(function(p){if(p.date)yillar[new Date(p.date).getFullYear()]=true;});});
+  giderler.forEach(function(g){if(g.yil)yillar[g.yil]=true;});
+  muhtGelirler.forEach(function(g){if(g.yil)yillar[g.yil]=true;});
+  return Object.keys(yillar).map(Number).sort(function(a,b){return b-a;});
+}
+
+function barStack(gelir,muht,gider,maxV){
+  function h(v){return maxV>0?Math.max(v>0?2:0,Math.round(v/maxV*100)):0;}
+  return '<span class="bar gelir" style="height:'+h(gelir)+'%" data-tip="Tahsilat '+fmt(gelir)+'"></span>'
+       + '<span class="bar muht" style="height:'+h(muht)+'%" data-tip="Muhtelif '+fmt(muht)+'"></span>'
+       + '<span class="bar gider" style="height:'+h(gider)+'%" data-tip="Gider '+fmt(gider)+'"></span>';
+}
+
+function barChart(rows){
+  var maxV=rows.reduce(function(m,r){return Math.max(m,r.gelir,r.muht,r.gider);},0);
+  var cols=rows.map(function(r){
+    return '<div class="bar-col">'
+      +'<div class="bar-stack">'+barStack(r.gelir,r.muht,r.gider,maxV)+'</div>'
+      +'<div class="bar-x">'+r.kisa+'<b class="'+(r.net>=0?'pos':'neg')+'">'+(r.net>=0?'+':'')+kisaltTutar(r.net)+'</b></div>'
+    +'</div>';
+  }).join('');
+  return '<div class="bar-chart-legend">'
+      +'<span class="lg"><i style="background:var(--green)"></i>Tahsilat</span>'
+      +'<span class="lg"><i style="background:var(--blue)"></i>Muhtelif Gelir</span>'
+      +'<span class="lg"><i style="background:var(--red)"></i>Gider</span>'
+    +'</div>'
+    +'<div class="bar-chart">'+cols+'</div>';
+}
+
+function kisaltTutar(n){
+  var a=Math.abs(n), s=n<0?'-':'';
+  if(a>=1000000) return s+(a/1000000).toLocaleString('tr-TR',{maximumFractionDigits:1})+'M';
+  if(a>=1000)    return s+Math.round(a/1000)+'B';
+  return s+a;
+}
+
+function aylikRows(y){
+  var rows=[];
+  for(var m=0;m<12;m++){
+    var gel=gelirForMonth(y,m), muht=muhtGelirForMonth(y,m), gid=giderForMonth(y,m);
+    rows.push({label:ayStr(y,m),kisa:AYLAR[m].slice(0,3),gelir:gel,muht:muht,gider:gid,net:gel+muht-gid});
+  }
+  return rows;
+}
+
+function yariyilTopla(y,baslangic){
+  var gel=0,muht=0,gid=0;
+  for(var m=baslangic;m<baslangic+6;m++){gel+=gelirForMonth(y,m);muht+=muhtGelirForMonth(y,m);gid+=giderForMonth(y,m);}
+  return {gelir:gel,muht:muht,gider:gid,net:gel+muht-gid};
+}
+
+function yariyilPanel(cls,tag,title,d){
+  var pozGelir=d.gelir+d.muht;
+  var maxKalem=Math.max(d.gelir,d.muht,d.gider,1);
+  function meter(v,renk){return '<div class="hp-meter"><i class="'+renk+'" style="width:'+Math.round(v/maxKalem*100)+'%"></i></div>';}
+  return '<div class="half-panel '+cls+'">'
+    +'<div class="hp-tag">'+tag+'</div>'
+    +'<div class="hp-title">'+title+'</div>'
+    +'<div class="hp-net '+(d.net>=0?'pos':'neg')+'">'+fmt(d.net)+'</div>'
+    +'<div class="hp-netlabel">Net Kar / Zarar</div>'
+    +'<div class="hp-line"><div class="hpl-row"><span class="lab"><i class="dot-green"></i>Tahsilat</span><span class="val">'+fmt(d.gelir)+'</span></div>'+meter(d.gelir,'green')+'</div>'
+    +'<div class="hp-line"><div class="hpl-row"><span class="lab"><i class="dot-blue"></i>Muhtelif Gelir</span><span class="val">'+fmt(d.muht)+'</span></div>'+meter(d.muht,'blue')+'</div>'
+    +'<div class="hp-line"><div class="hpl-row"><span class="lab"><i class="dot-red"></i>Gider</span><span class="val">'+fmt(d.gider)+'</span></div>'+meter(d.gider,'red')+'</div>'
+  +'</div>';
 }
 
 // Belirli yıl/ay için müvekkil tahsilatı
@@ -1027,7 +1197,16 @@ function muhtGelirForMonth(y,m){
 function renderOzet(){
   var nowY=now.getFullYear(), nowM=now.getMonth();
 
-  // HERO: tüm zamanlar toplamı
+  // Yıl seçici doldur
+  var yillar=ozetYilSecenekleri();
+  if(yillar.indexOf(ozetYil)===-1) ozetYil=yillar[0]||nowY;
+  var sel=document.getElementById('ozet-year');
+  if(sel){
+    sel.innerHTML=yillar.map(function(y){return '<option value="'+y+'"'+(y===ozetYil?' selected':'')+'>'+y+'</option>';}).join('');
+  }
+  document.getElementById('ozet-year-wrap').style.display=(currentPeriod==='buyil')?'flex':'none';
+
+  // ===== HERO: tüm zamanlar =====
   var toplamTahsilat=data.reduce(function(s,c){return s+paid(c);},0);
   var toplamMuhtGelir=muhtGelirler.reduce(function(s,g){return s+g.tutar;},0);
   var toplamGelir=toplamTahsilat+toplamMuhtGelir;
@@ -1035,78 +1214,112 @@ function renderOzet(){
   var netKar=toplamGelir-toplamGider;
   var toplamAnlasman=data.reduce(function(s,c){return s+c.agreed;},0);
   var toplamBakiye=toplamAnlasman-toplamTahsilat;
+  var giderOran=toplamGelir>0?Math.min(100,Math.round(toplamGider/toplamGelir*100)):0;
+  var tahsilOran=toplamAnlasman>0?Math.round(toplamTahsilat/toplamAnlasman*100):0;
+  var muhtOran=toplamGelir>0?Math.round(toplamMuhtGelir/toplamGelir*100):0;
+  var bakiyeOran=toplamAnlasman>0?Math.round(toplamBakiye/toplamAnlasman*100):0;
 
   document.getElementById('ozet-hero').innerHTML=
-    '<h2>Genel Finansal Özet</h2>'
+    '<div class="hero-head">'
+      +'<div><div class="eyebrow">Avukatlık Ofisi · Mali Rapor</div><h2>Genel Finansal Özet</h2></div>'
+      +'<div class="hero-net">'
+        +'<div class="nl">Net Kar / Zarar (Tüm Zamanlar)</div>'
+        +'<div class="nv '+(netKar>=0?'pos':'neg')+'">'+fmt(netKar)+'</div>'
+        +'<div class="nbadge '+(netKar>=0?'pos':'neg')+'">'+(netKar>=0?'▲ Kâr':'▼ Zarar')+' · Gider/Gelir %'+giderOran+'</div>'
+      +'</div>'
+    +'</div>'
     +'<div class="hero-grid">'
-      +'<div class="hero-stat"><div class="hl">Toplam Tahsilat</div><div class="hv pos">'+fmt(toplamTahsilat)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Muhtelif Gelirler</div><div class="hv" style="color:var(--blue)">'+fmt(toplamMuhtGelir)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Toplam Gelir</div><div class="hv pos">'+fmt(toplamGelir)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Toplam Gider</div><div class="hv neg">'+fmt(toplamGider)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Net Kar/Zarar</div><div class="hv '+(netKar>=0?'pos':'neg')+'">'+fmt(netKar)+'</div></div>'
-      +'<div class="hero-stat"><div class="hl">Tahsil Edilmemiş</div><div class="hv neg">'+fmt(toplamBakiye)+'</div></div>'
+      +'<div class="hero-stat"><div class="hl">Toplam Tahsilat</div><div class="hv pos">'+fmt(toplamTahsilat)+'</div><div class="hero-bar"><i class="pos" style="width:'+tahsilOran+'%"></i></div></div>'
+      +'<div class="hero-stat"><div class="hl">Muhtelif Gelir</div><div class="hv blue">'+fmt(toplamMuhtGelir)+'</div><div class="hero-bar"><i class="blue" style="width:'+muhtOran+'%"></i></div></div>'
+      +'<div class="hero-stat"><div class="hl">Toplam Gider</div><div class="hv neg">'+fmt(toplamGider)+'</div><div class="hero-bar"><i class="neg" style="width:'+giderOran+'%"></i></div></div>'
+      +'<div class="hero-stat"><div class="hl">Tahsil Edilmemiş</div><div class="hv neg">'+fmt(toplamBakiye)+'</div><div class="hero-bar"><i class="neg" style="width:'+bakiyeOran+'%"></i></div></div>'
     +'</div>';
 
-  // RAPOR
-  var rows=[];
-  if(currentPeriod==='aylik'){
-    // Son 12 ay
-    for(var k=11;k>=0;k--){
-      var d=new Date(nowY,nowM-k,1);
-      var y=d.getFullYear(), m=d.getMonth();
-      var gel=gelirForMonth(y,m);
-      var muht=muhtGelirForMonth(y,m);
-      var gid=giderForMonth(y,m);
-      rows.push({label:ayStr(y,m),gelir:gel,muht:muht,gider:gid,net:gel+muht-gid});
-    }
-  } else if(currentPeriod==='ucaylik'){
-    // Son 8 çeyrek
-    for(var q=7;q>=0;q--){
-      var qDate=new Date(nowY,nowM - q*3,1);
-      var qY=qDate.getFullYear(), qM=qDate.getMonth();
-      // hizala çeyrek başına
-      var qStart=Math.floor(qM/3)*3;
-      var qLabel=(qStart===0?'Q1':qStart===3?'Q2':qStart===6?'Q3':'Q4')+' '+qY;
-      var gel=0,muht=0,gid=0;
-      for(var mm=qStart;mm<qStart+3;mm++){gel+=gelirForMonth(qY,mm);muht+=muhtGelirForMonth(qY,mm);gid+=giderForMonth(qY,mm);}
-      // deduplicate by label
-      if(!rows.find(function(r){return r.label===qLabel;}))
-        rows.push({label:qLabel,gelir:gel,muht:muht,gider:gid,net:gel+muht-gid});
-    }
-  } else {
-    // Son 5 yıl
-    for(var yr=nowY-4;yr<=nowY;yr++){
-      var gel=0,muht=0,gid=0;
-      for(var mm=0;mm<12;mm++){gel+=gelirForMonth(yr,mm);muht+=muhtGelirForMonth(yr,mm);gid+=giderForMonth(yr,mm);}
-      rows.push({label:yr+' Yılı',gelir:gel,muht:muht,gider:gid,net:gel+muht-gid});
-    }
-  }
+  // ===== RAPOR =====
+  if(currentPeriod==='buyil') renderBuYil();
+  else if(currentPeriod==='aylik') renderAylik();
+  else renderYillik();
+}
 
+function renderBuYil(){
+  var y=ozetYil;
+  var ilk=yariyilTopla(y,0);
+  var ikinci=yariyilTopla(y,6);
+  var yilNet=ilk.net+ikinci.net;
+  var rows=aylikRows(y);
+
+  document.getElementById('ozet-report').innerHTML=
+    '<div class="half-grid">'
+      +yariyilPanel('h1','I. Yarıyıl',(y)+' · Ocak – Haziran',ilk)
+      +yariyilPanel('h2','II. Yarıyıl',(y)+' · Temmuz – Aralık',ikinci)
+    +'</div>'
+    +'<div class="report-card">'
+      +'<div class="report-card-head"><h3>'+y+' Aylık Dağılım</h3><span class="rc-sub">Yıl Net: '+fmt(yilNet)+'</span></div>'
+      +barChart(rows)
+    +'</div>';
+}
+
+function renderAylik(){
+  var nowY=now.getFullYear(), nowM=now.getMonth();
+  var rows=[];
+  for(var k=11;k>=0;k--){
+    var d=new Date(nowY,nowM-k,1), yy=d.getFullYear(), mm=d.getMonth();
+    var gel=gelirForMonth(yy,mm), muht=muhtGelirForMonth(yy,mm), gid=giderForMonth(yy,mm);
+    rows.push({label:ayStr(yy,mm),kisa:AYLAR[mm].slice(0,3),gelir:gel,muht:muht,gider:gid,net:gel+muht-gid});
+  }
+  var rowsDesc=rows.slice().reverse();
+  document.getElementById('ozet-report').innerHTML=
+    '<div class="report-card">'
+      +'<div class="report-card-head"><h3>Son 12 Ay</h3><span class="rc-sub">Aylık gelir-gider seyri</span></div>'
+      +barChart(rows)
+    +'</div>'
+    +raporTablosu('Ay',rowsDesc);
+}
+
+function renderYillik(){
+  var nowY=now.getFullYear();
+  var rows=[];
+  for(var yr=nowY;yr>=nowY-4;yr--){
+    var gel=0,muht=0,gid=0;
+    for(var mm=0;mm<12;mm++){gel+=gelirForMonth(yr,mm);muht+=muhtGelirForMonth(yr,mm);gid+=giderForMonth(yr,mm);}
+    rows.push({label:yr+' Yılı',kisa:''+yr,gelir:gel,muht:muht,gider:gid,net:gel+muht-gid});
+  }
+  document.getElementById('ozet-report').innerHTML=
+    '<div class="report-card">'
+      +'<div class="report-card-head"><h3>Son 5 Yıl</h3><span class="rc-sub">Yıllık karşılaştırma</span></div>'
+      +barChart(rows)
+    +'</div>'
+    +raporTablosu('Yıl',rows);
+}
+
+function raporTablosu(baslik,rows){
   var totalGel=rows.reduce(function(s,r){return s+r.gelir;},0);
   var totalMuht=rows.reduce(function(s,r){return s+r.muht;},0);
   var totalGid=rows.reduce(function(s,r){return s+r.gider;},0);
   var totalNet=totalGel+totalMuht-totalGid;
+  var maxAbsNet=rows.reduce(function(m,r){return Math.max(m,Math.abs(r.net));},0)||1;
 
   var tableRows=rows.map(function(r){
+    var w=Math.round(Math.abs(r.net)/maxAbsNet*100);
     return '<tr>'
-      +'<td class="bold">'+r.label+'</td>'
-      +'<td class="pos">'+fmt(r.gelir)+'</td>'
-      +'<td style="color:var(--blue)">'+fmt(r.muht)+'</td>'
-      +'<td class="neg">'+fmt(r.gider)+'</td>'
-      +'<td class="'+(r.net>=0?'pos':'neg')+' bold">'+fmt(r.net)+'</td>'
+      +'<td><div class="rt-period"><span class="rtp-name">'+r.label+'</span>'
+        +'<span class="rt-mini"><i class="'+(r.net>=0?'pos':'neg')+'" style="width:'+w+'%"></i></span></div></td>'
+      +'<td class="num pos">'+fmt(r.gelir)+'</td>'
+      +'<td class="num blue">'+fmt(r.muht)+'</td>'
+      +'<td class="num neg">'+fmt(r.gider)+'</td>'
+      +'<td class="num bold '+(r.net>=0?'pos':'neg')+'">'+fmt(r.net)+'</td>'
     +'</tr>';
   }).join('');
 
-  document.getElementById('ozet-report').innerHTML=
-    '<table class="report-table">'
-      +'<thead><tr><th>Dönem</th><th>Tahsilat</th><th>Muht. Gelir</th><th>Gider</th><th>Net Kar/Zarar</th></tr></thead>'
+  return '<table class="report-table">'
+      +'<thead><tr><th>'+baslik+'</th><th class="num">Tahsilat</th><th class="num">Muht. Gelir</th><th class="num">Gider</th><th class="num">Net Kar/Zarar</th></tr></thead>'
       +'<tbody>'+tableRows+'</tbody>'
       +'<tfoot><tr class="total-row">'
         +'<td>TOPLAM</td>'
-        +'<td class="pos">'+fmt(totalGel)+'</td>'
-        +'<td style="color:var(--blue)">'+fmt(totalMuht)+'</td>'
-        +'<td class="neg">'+fmt(totalGid)+'</td>'
-        +'<td class="'+(totalNet>=0?'pos':'neg')+'">'+fmt(totalNet)+'</td>'
+        +'<td class="num pos">'+fmt(totalGel)+'</td>'
+        +'<td class="num blue">'+fmt(totalMuht)+'</td>'
+        +'<td class="num neg">'+fmt(totalGid)+'</td>'
+        +'<td class="num '+(totalNet>=0?'pos':'neg')+'">'+fmt(totalNet)+'</td>'
       +'</tr></tfoot>'
     +'</table>';
 }
