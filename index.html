@@ -55,6 +55,55 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 .snap-row .snap-info{color:var(--ink3);flex:1}
 .snap-row button{background:rgba(74,222,128,.15);color:#4ade80;border:0;border-radius:4px;
   padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ---- Soz verilen odemeler ---- */
+.soz-banner{display:none;align-items:center;gap:10px;background:rgba(248,113,113,.12);
+  color:#fca5a5;border-bottom:1px solid rgba(248,113,113,.3);padding:9px 14px;font-size:13px;font-weight:600}
+.soz-banner b{color:#fecaca}
+.soz-banner-btn{margin-left:auto;background:rgba(248,113,113,.2);color:#fecaca;border:0;border-radius:4px;
+  padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
+.soz-banner-btn:hover{background:rgba(248,113,113,.35)}
+.nav-rozet{display:none;background:#ef4444;color:#fff;border-radius:9px;padding:1px 6px;
+  font-size:10px;font-weight:800;margin-left:5px;vertical-align:middle}
+.tk-ozet{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.tk-box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+.tk-box .tl{font-size:11px;color:var(--ink3);margin-bottom:5px}
+.tk-box .tv{font-size:19px;font-weight:700;letter-spacing:-.4px}
+.tk-grup{margin-bottom:18px}
+.tk-grup-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;color:var(--ink2)}
+.tk-grup-head .say{background:rgba(148,163,184,.18);border-radius:9px;padding:1px 7px;font-size:10px}
+.tk-row{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--card);
+  border:1px solid var(--line);border-radius:9px;margin-bottom:6px;flex-wrap:wrap}
+.tk-row.gecikmis{border-left:3px solid #ef4444}
+.tk-row.bugun{border-left:3px solid #f59e0b}
+.tk-row.hafta{border-left:3px solid #eab308}
+.tk-row.ileri{border-left:3px solid #64748b}
+.tk-row.kapali{opacity:.55}
+.tk-ad{font-weight:600;font-size:13px;min-width:150px}
+.tk-tarih{font-size:12px;color:var(--ink2);min-width:135px}
+.tk-tutar{font-weight:700;font-size:14px;min-width:105px}
+.tk-not{font-size:11px;color:var(--ink3);flex:1;min-width:110px}
+.tk-btns{display:flex;gap:5px;margin-left:auto;flex-shrink:0}
+.tk-btns button{border:0;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit}
+.tk-tahsil{background:rgba(74,222,128,.16);color:#4ade80}
+.tk-ertele{background:rgba(251,191,36,.16);color:#fbbf24}
+.tk-iptal{background:rgba(148,163,184,.16);color:#94a3b8}
+.tk-sil{background:rgba(248,113,113,.16);color:#f87171}
+.tk-etiket{font-size:10px;font-weight:800;border-radius:9px;padding:2px 8px;letter-spacing:.3px}
+.tk-etiket.gecikmis{background:rgba(239,68,68,.18);color:#fca5a5}
+.tk-etiket.bugun{background:rgba(245,158,11,.18);color:#fcd34d}
+.tk-etiket.odendi{background:rgba(74,222,128,.16);color:#4ade80}
+.tk-etiket.iptal{background:rgba(148,163,184,.16);color:#94a3b8}
+.tk-bos{font-size:12px;color:var(--ink3);font-style:italic;padding:6px 2px}
+.soz-form{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end;margin-bottom:12px}
+.card-rozet{background:rgba(239,68,68,.18);color:#fca5a5;border-radius:9px;padding:2px 7px;
+  font-size:10px;font-weight:800}
+@media(max-width:760px){
+  .tk-ozet{grid-template-columns:repeat(2,1fr)}
+  .soz-form{grid-template-columns:1fr 1fr}
+}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* SETUP BANNER */
@@ -194,7 +243,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 .hero-net .nbadge{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
 .hero-net .nbadge.pos{background:rgba(94,234,212,.14);color:#5eead4}
 .hero-net .nbadge.neg{background:rgba(252,165,165,.14);color:#fca5a5}
-.hero-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hero-grid{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .hero-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 13px}
 .hero-stat .hl{font-size:9.5px;color:rgba(250,250,249,.5);text-transform:uppercase;letter-spacing:.7px}
 .hero-stat .hv{font-size:17px;font-weight:600;margin-top:5px;letter-spacing:-.3px}
@@ -370,6 +419,13 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 </div>
 
 
+<!-- Ödeme Sözü Uyarı Bandı -->
+<div class="soz-banner" id="soz-banner">
+  <span>🔔</span>
+  <span id="soz-banner-text"></span>
+  <button class="soz-banner-btn" onclick="showMain('takvim')">Ödeme Takvimi</button>
+</div>
+
 <!-- Senkron Hata Bandı -->
 <div class="sync-banner" id="sync-banner">
   <span class="sync-banner-ico">⚠</span>
@@ -393,6 +449,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 
 <nav class="main-nav">
   <button class="main-tab active" onclick="showMain('muvekkiller')">Müvekkiller</button>
+  <button class="main-tab" onclick="showMain('takvim')">Ödeme Takvimi<span class="nav-rozet" id="takvim-rozet"></span></button>
   <button class="main-tab" onclick="showMain('danismanlik')">Danışmanlık</button>
   <button class="main-tab" onclick="showMain('giderler')">Giderler</button>
   <button class="main-tab" onclick="showMain('muhtgelirler')">Muhtelif Gelirler</button>
@@ -420,6 +477,12 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
       <button class="sm-btn" onclick="showSetupBanner()" title="Supabase bağlantısı" style="white-space:nowrap">☁ Bulut</button>
     </div>
     <div id="client-list"></div>
+  </div>
+
+  <!-- ====== ÖDEME TAKVİMİ ====== -->
+  <div id="takvim" class="section">
+    <div class="tk-ozet" id="tk-ozet"></div>
+    <div id="tk-list"></div>
   </div>
 
   <!-- ====== DANIŞMANLIK ====== -->
@@ -639,11 +702,12 @@ function ayStr(y,m){return AYLAR[m]+' '+y;}
 // ============================================================
 function showMain(id){
   document.querySelectorAll('.main-tab').forEach(function(t,i){
-    t.classList.toggle('active',['muvekkiller','danismanlik','giderler','muhtgelirler','ozet','yeni'][i]===id);
+    t.classList.toggle('active',['muvekkiller','takvim','danismanlik','giderler','muhtgelirler','ozet','yeni'][i]===id);
   });
   document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active')});
   document.getElementById(id).classList.add('active');
   if(id==='muvekkiller') renderClients();
+  if(id==='takvim') renderTakvim();
   if(id==='danismanlik') renderDanismanlik();
   if(id==='giderler'){updateGiderAyLabel();renderGiderler();}
   if(id==='muhtgelirler'){updateMuhtGelirAyLabel();renderMuhtGelirler();}
@@ -654,7 +718,7 @@ function showMain(id){
 // MÜVEKKİLLER
 // ============================================================
 function showInner(i,tab){
-  ['odeme','masraf','avukat','ozet','danismanlik','duzenle'].forEach(function(t){
+  ['odeme','masraf','avukat','ozet','soz','danismanlik','duzenle'].forEach(function(t){
     var it=document.getElementById('it-'+t+'-'+i);
     var ip=document.getElementById('ip-'+t+'-'+i);
     if(it) it.classList.toggle('active',t===tab);
@@ -732,7 +796,9 @@ function renderClients(){
           +'<div class="avatar">'+ini(c.name)+'</div>'
           +'<div><div class="client-name">'+c.name+'</div><div class="client-sub">'+meta+'</div></div>'
         +'</div>'
-        +'<div style="display:flex;align-items:center;gap:7px">'+badge
+        +'<div style="display:flex;align-items:center;gap:7px">'
+          +(musteriAcilSay(c)?'<span class="card-rozet" title="Tahsil edilmesi gereken ödeme sözü">🔔 '+musteriAcilSay(c)+'</span>':'')
+          +badge
           +'<span style="font-size:11px;color:var(--ink2)">'+(isDan?fmt(c.danismanlik.tutar||c.agreed)+'/ay':(b>0?fmt(b):''))+'</span>'
           +'<span class="arrow" id="arr-'+i+'">▼</span>'
         +'</div>'
@@ -743,6 +809,7 @@ function renderClients(){
           +'<button class="itab" id="it-masraf-'+i+'" onclick="showInner('+i+',\'masraf\')">Masraflar</button>'
           +'<button class="itab" id="it-avukat-'+i+'" onclick="showInner('+i+',\'avukat\')">Avukat Payları</button>'
           +'<button class="itab" id="it-ozet-'+i+'" onclick="showInner('+i+',\'ozet\')">Dosya Özeti</button>'
+          +'<button class="itab" id="it-soz-'+i+'" onclick="showInner('+i+',\'soz\')">🔔 Söz Verilen Ödeme'+(musteriAcilSay(c)?' ('+musteriAcilSay(c)+')':'')+'</button>'
           +'<button class="itab" id="it-danismanlik-'+i+'" onclick="showInner('+i+',\'danismanlik\')">📋 Danışmanlık</button>'
           +'<button class="itab" id="it-duzenle-'+i+'" onclick="showInner('+i+',\'duzenle\')">✏ Düzenle</button>'
         +'</div>'
@@ -837,6 +904,8 @@ function renderClients(){
           +'</div>'
         +'</div>'
 
+        +'<div class="ipane" id="ip-soz-'+i+'">'+sozPane(i)+'</div>'
+
         +'<div class="ipane" id="ip-duzenle-'+i+'">'
           +'<div class="slabel">Müvekkil Bilgileri</div>'
           +'<div class="edit-client-form">'
@@ -898,6 +967,7 @@ function delAvukat(i,ai){if(!confirm('Silinsin mi?')) return; tombAdd('row',null
 
 function rerender(i,tab){
   renderClients();
+  try{renderSozUyari();renderTakvim();}catch(e){}
   setTimeout(function(){
     document.getElementById('bd-'+i).classList.add('open');
     showInner(i,tab);
@@ -1264,6 +1334,7 @@ function renderOzet(){
       +'<div class="hero-stat"><div class="hl">Muhtelif Gelir</div><div class="hv blue">'+fmt(toplamMuhtGelir)+'</div><div class="hero-bar"><i class="blue" style="width:'+muhtOran+'%"></i></div></div>'
       +'<div class="hero-stat"><div class="hl">Toplam Gider</div><div class="hv neg">'+fmt(toplamGider)+'</div><div class="hero-bar"><i class="neg" style="width:'+giderOran+'%"></i></div></div>'
       +'<div class="hero-stat"><div class="hl">Tahsil Edilmemiş</div><div class="hv neg">'+fmt(toplamBakiye)+'</div><div class="hero-bar"><i class="neg" style="width:'+bakiyeOran+'%"></i></div></div>'
+      +'<div class="hero-stat"><div class="hl">Beklenen Tahsilat</div><div class="hv" style="color:#fbbf24">'+fmt(beklenenTutar())+'</div><div class="hero-bar"><i style="background:#fbbf24;width:'+(toplamGelir>0?Math.min(100,Math.round(beklenenTutar()/toplamGelir*100)):0)+'%"></i></div><div style="font-size:10px;color:var(--ink3);margin-top:4px">söz verilen · gelire dahil değil</div></div>'
     +'</div>';
 
   // ===== RAPOR =====
@@ -1434,6 +1505,280 @@ function renderDanismanlik(){
       +'</div>'
     +'</div>';
   }).join('');
+}
+
+// ============================================================
+// SÖZ VERİLEN ÖDEMELER
+// Müvekkilin "şu tarihte ödeyeceğim" dediği tutarlar burada tutulur.
+// Tahsil edilene kadar hiçbir gelir toplamına GİRMEZ; Genel Özet'te
+// yalnızca ayrı bir "Beklenen Tahsilat" kutusunda gösterilir.
+// ============================================================
+function bugunStr(){
+  var d=new Date();
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function gunFark(tarih){
+  if(!tarih) return 0;
+  var a=new Date(bugunStr()+'T00:00:00'), b=new Date(tarih+'T00:00:00');
+  if(isNaN(b.getTime())) return 0;
+  return Math.round((b-a)/86400000);
+}
+function sozListe(c){ return (c && c.sozler) ? c.sozler : []; }
+
+// Bir sözün hangi grupta olduğunu söyler.
+function sozDurumu(sz){
+  if(sz.durum==='odendi') return 'odendi';
+  if(sz.durum==='iptal')  return 'iptal';
+  var f=gunFark(sz.tarih);
+  if(f<0)  return 'gecikmis';
+  if(f===0) return 'bugun';
+  if(f<=7) return 'hafta';
+  return 'ileri';
+}
+var SOZ_BASLIK={gecikmis:'⚠ Gecikmiş',bugun:'● Bugün',hafta:'○ Bu hafta',
+                ileri:'· İleri tarihli',odendi:'✓ Tahsil edilmiş',iptal:'× İptal edilmiş'};
+
+// Tüm müvekkillerin sözlerini tarihe göre sıralı tek listede verir.
+function tumSozler(){
+  var out=[];
+  (data||[]).forEach(function(c,i){
+    sozListe(c).forEach(function(sz){ out.push({c:c,i:i,sz:sz}); });
+  });
+  out.sort(function(a,b){ return String(a.sz.tarih||'').localeCompare(String(b.sz.tarih||'')); });
+  return out;
+}
+function bekleyenSozler(){
+  return tumSozler().filter(function(x){ return x.sz.durum!=='odendi'&&x.sz.durum!=='iptal'; });
+}
+// Bugün veya geçmiş tarihli, hâlâ tahsil edilmemiş sözler — asıl uyarı bunlar.
+function acilSozler(){
+  return bekleyenSozler().filter(function(x){
+    var d=sozDurumu(x.sz); return d==='gecikmis'||d==='bugun';
+  });
+}
+function beklenenTutar(){
+  return bekleyenSozler().reduce(function(t,x){ return t+(x.sz.tutar||0); },0);
+}
+// Bir müvekkilin gecikmiş/bugün olan söz sayısı (kart rozeti için)
+function musteriAcilSay(c){
+  return sozListe(c).filter(function(sz){
+    var d=sozDurumu(sz); return d==='gecikmis'||d==='bugun';
+  }).length;
+}
+
+function trTarih(t){
+  if(!t) return '';
+  var p=String(t).split('-');
+  return p.length===3 ? p[2]+'.'+p[1]+'.'+p[0] : t;
+}
+function gunMetni(sz){
+  var d=sozDurumu(sz);
+  if(d==='odendi') return 'tahsil edildi'+(sz.tahsilTarihi?' · '+trTarih(sz.tahsilTarihi):'');
+  if(d==='iptal')  return 'iptal edildi';
+  var f=gunFark(sz.tarih);
+  if(f===0) return 'BUGÜN';
+  if(f<0)   return Math.abs(f)+' gün gecikti';
+  if(f===1) return 'yarın';
+  return f+' gün sonra';
+}
+
+// ---- Kayıt işlemleri ----
+function sozEkle(i){
+  var tar=document.getElementById('sz-tarih-'+i).value;
+  var tut=parseInt(document.getElementById('sz-tutar-'+i).value)||0;
+  var nt=document.getElementById('sz-not-'+i).value.trim();
+  if(!tar){ alert('Ödeme sözü verilen tarihi giriniz.'); return; }
+  if(tut<=0){ alert('Tutar giriniz.'); return; }
+  data[i].sozler=data[i].sozler||[];
+  data[i].sozler.push({
+    id:Date.now()+Math.floor(Math.random()*1000),
+    tarih:tar, tutar:tut, not:nt, durum:'bekliyor', olusturma:bugunStr()
+  });
+  saveData(); syncToSupabase();
+  document.getElementById('sz-tutar-'+i).value='';
+  document.getElementById('sz-not-'+i).value='';
+  rerender(i,'soz');
+}
+
+function sozBul(i,sid){
+  return (data[i].sozler||[]).find(function(x){ return String(x.id)===String(sid); });
+}
+
+// Tahsil edildi: söz kapanır ve gelire giren bir ödeme kaydı oluşur.
+function sozTahsil(i,sid){
+  var c=data[i], sz=sozBul(i,sid);
+  if(!sz) return;
+  if(!confirm(fmt(sz.tutar)+' tahsil edildi olarak işaretlensin mi?'+
+    String.fromCharCode(10)+String.fromCharCode(10)+
+    'Müvekkile bugün tarihli ödeme kaydı eklenecek ve tutar Tahsilat toplamına girecek.')) return;
+  sz.durum='odendi';
+  sz.tahsilTarihi=bugunStr();
+  c.payments=c.payments||[];
+  var etiket='soz-'+sz.id;
+  if(!c.payments.some(function(pp){ return pp.soz===etiket; })){
+    c.payments.push({id:Date.now()+Math.floor(Math.random()*1000),
+      date:bugunStr(), amount:sz.tutar, avukat:'', soz:etiket});
+  }
+  saveData(); syncToSupabase(); rerender(i,'soz');
+}
+
+function sozErtele(i,sid){
+  var sz=sozBul(i,sid);
+  if(!sz) return;
+  var yeni=prompt('Yeni ödeme tarihi (YYYY-AA-GG):', sz.tarih);
+  if(!yeni) return;
+  yeni=yeni.trim();
+  if(yeni.length!==10||isNaN(new Date(yeni+'T00:00:00').getTime())){
+    alert('Tarihi 2026-09-20 biçiminde giriniz.'); return;
+  }
+  sz.gecmisTarihler=(sz.gecmisTarihler||[]).concat([sz.tarih]);
+  sz.tarih=yeni;
+  sz.durum='bekliyor';
+  saveData(); syncToSupabase(); rerender(i,'soz');
+}
+
+function sozIptal(i,sid){
+  var sz=sozBul(i,sid);
+  if(!sz) return;
+  if(!confirm('Bu ödeme sözü iptal edilsin mi? Kayıt geçmişte kalır.')) return;
+  sz.durum='iptal';
+  saveData(); syncToSupabase(); rerender(i,'soz');
+}
+
+function sozGeriAl(i,sid){
+  var c=data[i], sz=sozBul(i,sid);
+  if(!sz) return;
+  if(!confirm('Tahsilat geri alınsın mı? Bu sözle oluşturulan ödeme kaydı silinecek.')) return;
+  var etiket='soz-'+sz.id;
+  (c.payments||[]).forEach(function(pp){
+    if(pp.soz===etiket) tombAdd('row',null,c.id,rowKey(pp));
+  });
+  c.payments=(c.payments||[]).filter(function(pp){ return pp.soz!==etiket; });
+  sz.durum='bekliyor';
+  delete sz.tahsilTarihi;
+  saveData(); syncToSupabase(); rerender(i,'soz');
+}
+
+function sozSil(i,sid){
+  var c=data[i], sz=sozBul(i,sid);
+  if(!sz) return;
+  if(sz.durum==='odendi'){
+    alert('Tahsil edilmiş bir söz silinemez. Önce "Geri al" ile tahsilatı iptal edin.');
+    return;
+  }
+  if(!confirm('Kayıt tamamen silinsin mi?')) return;
+  tombAdd('row',null,c.id,rowKey(sz));
+  c.sozler=(c.sozler||[]).filter(function(x){ return String(x.id)!==String(sid); });
+  saveData(); syncToSupabase(); rerender(i,'soz');
+}
+
+// ---- Müvekkil kartındaki "Söz Verilen Ödeme" sekmesi ----
+function sozPane(i){
+  var c=data[i];
+  var liste=sozListe(c).slice().sort(function(a,b){
+    return String(a.tarih||'').localeCompare(String(b.tarih||''));
+  });
+  var html='<div class="soz-form">'
+    +'<div><label class="flbl">Ödeme Tarihi</label><input type="date" class="fi" id="sz-tarih-'+i+'"></div>'
+    +'<div><label class="flbl">Tutar ₺</label><input type="number" class="fi" id="sz-tutar-'+i+'" placeholder="0" min="1"></div>'
+    +'<div><label class="flbl">Not</label><input type="text" class="fi" id="sz-not-'+i+'" placeholder="örn. telefonda söz verdi"></div>'
+    +'<button class="add-btn" onclick="sozEkle('+i+')">Ekle</button>'
+    +'</div>';
+  if(!liste.length){
+    return html+'<div class="tk-bos">Henüz ödeme sözü kaydı yok. Müvekkil ileri bir tarihte ödeme yapacağını söylediyse buraya girin; tarihi geldiğinde uygulama sizi uyarır.</div>';
+  }
+  html+=liste.map(function(sz){ return sozSatir(i,sz,true); }).join('');
+  return html;
+}
+
+// Tek bir söz satırı. kartIcinde=true ise müvekkil adı yazılmaz.
+function sozSatir(i,sz,kartIcinde){
+  var d=sozDurumu(sz);
+  var kapali=(d==='odendi'||d==='iptal');
+  var etiket='';
+  if(d==='gecikmis'||d==='bugun'||d==='odendi'||d==='iptal')
+    etiket='<span class="tk-etiket '+d+'">'+(d==='gecikmis'?'GECİKTİ':d==='bugun'?'BUGÜN':d==='odendi'?'TAHSİL EDİLDİ':'İPTAL')+'</span>';
+  var btns='';
+  if(d==='odendi'){
+    btns='<button class="tk-ertele" onclick="sozGeriAl('+i+','+sz.id+')">Geri al</button>';
+  } else if(d==='iptal'){
+    btns='<button class="tk-ertele" onclick="sozErtele('+i+','+sz.id+')">Yeni tarih</button>'
+        +'<button class="tk-sil" onclick="sozSil('+i+','+sz.id+')">Sil</button>';
+  } else {
+    btns='<button class="tk-tahsil" onclick="sozTahsil('+i+','+sz.id+')">✓ Tahsil edildi</button>'
+        +'<button class="tk-ertele" onclick="sozErtele('+i+','+sz.id+')">Ertele</button>'
+        +'<button class="tk-iptal" onclick="sozIptal('+i+','+sz.id+')">İptal</button>'
+        +'<button class="tk-sil" onclick="sozSil('+i+','+sz.id+')">Sil</button>';
+  }
+  var ertelendi=(sz.gecmisTarihler&&sz.gecmisTarihler.length)
+    ? ' · '+sz.gecmisTarihler.length+' kez ertelendi' : '';
+  return '<div class="tk-row '+d+(kapali?' kapali':'')+'">'
+    +(kartIcinde?'':'<div class="tk-ad">'+escHtml(data[i].name)+'</div>')
+    +'<div class="tk-tarih">'+trTarih(sz.tarih)+' <span style="color:var(--ink3)">('+gunMetni(sz)+')</span></div>'
+    +'<div class="tk-tutar">'+fmt(sz.tutar)+'</div>'
+    +etiket
+    +'<div class="tk-not">'+escHtml(sz.not||'')+ertelendi+'</div>'
+    +'<div class="tk-btns">'+btns+'</div>'
+  +'</div>';
+}
+
+// ---- Ödeme Takvimi sekmesi ----
+function renderTakvim(){
+  var kutu=document.getElementById('tk-ozet');
+  var kutu2=document.getElementById('tk-list');
+  if(!kutu||!kutu2) return;
+
+  var bekleyen=bekleyenSozler();
+  var acil=acilSozler();
+  var gecikmisTutar=bekleyen.filter(function(x){return sozDurumu(x.sz)==='gecikmis';})
+    .reduce(function(t,x){return t+(x.sz.tutar||0);},0);
+  var buAyTutar=bekleyen.filter(function(x){
+    var f=gunFark(x.sz.tarih); return f>=0&&f<=30;
+  }).reduce(function(t,x){return t+(x.sz.tutar||0);},0);
+
+  kutu.innerHTML=
+     '<div class="tk-box"><div class="tl">Gecikmiş</div><div class="tv" style="color:#f87171">'+fmt(gecikmisTutar)+'</div></div>'
+    +'<div class="tk-box"><div class="tl">Önümüzdeki 30 gün</div><div class="tv" style="color:var(--amber,#fbbf24)">'+fmt(buAyTutar)+'</div></div>'
+    +'<div class="tk-box"><div class="tl">Toplam Beklenen</div><div class="tv">'+fmt(beklenenTutar())+'</div></div>'
+    +'<div class="tk-box"><div class="tl">Bekleyen Söz</div><div class="tv">'+bekleyen.length+'</div></div>';
+
+  var gruplar=['gecikmis','bugun','hafta','ileri','odendi','iptal'];
+  var hepsi=tumSozler();
+  var html='';
+  gruplar.forEach(function(g){
+    var uyanlar=hepsi.filter(function(x){ return sozDurumu(x.sz)===g; });
+    if(!uyanlar.length) return;
+    var toplam=uyanlar.reduce(function(t,x){ return t+(x.sz.tutar||0); },0);
+    html+='<div class="tk-grup">'
+      +'<div class="tk-grup-head">'+SOZ_BASLIK[g]
+        +'<span class="say">'+uyanlar.length+'</span>'
+        +'<span style="margin-left:auto;font-weight:700;letter-spacing:0">'+fmt(toplam)+'</span></div>'
+      +uyanlar.map(function(x){ return sozSatir(x.i,x.sz,false); }).join('')
+      +'</div>';
+  });
+  if(!html) html='<div class="tk-bos">Henüz ödeme sözü kaydı yok. Bir müvekkil ileri tarihte ödeme yapacağını söylediyse, müvekkil kartındaki "🔔 Söz Verilen Ödeme" sekmesinden girin.</div>';
+  kutu2.innerHTML=html;
+}
+
+// ---- Uyarı bandı ve sekme rozeti ----
+function renderSozUyari(){
+  var acil=acilSozler();
+  var rozet=document.getElementById('takvim-rozet');
+  if(rozet){
+    rozet.textContent=acil.length?acil.length:'';
+    rozet.style.display=acil.length?'inline-block':'none';
+  }
+  var ban=document.getElementById('soz-banner');
+  if(!ban) return;
+  if(!acil.length){ ban.style.display='none'; return; }
+  var toplam=acil.reduce(function(t,x){ return t+(x.sz.tutar||0); },0);
+  var ilk=acil.slice(0,3).map(function(x){
+    return x.c.name+' ('+fmt(x.sz.tutar)+', '+gunMetni(x.sz)+')';
+  }).join(' · ');
+  document.getElementById('soz-banner-text').innerHTML=
+    '<b>'+acil.length+' tahsilat bekliyor</b> — toplam '+fmt(toplam)+'. '
+    +escHtml(ilk)+(acil.length>3?' ve '+(acil.length-3)+' tane daha':'');
+  ban.style.display='flex';
 }
 
 // Danışmanlık işaretlemesiyle oluşturulan ödeme kaydının etiketi.
@@ -1715,6 +2060,7 @@ function mergeClients(loc,rem){
     out.payments      = mergeRows(cur.payments,      c.payments);
     out.masraflar     = mergeRows(cur.masraflar,     c.masraflar);
     out.avukatPaylari = mergeRows(cur.avukatPaylari, c.avukatPaylari);
+    if(cur.sozler||c.sozler) out.sozler = mergeRows(cur.sozler, c.sozler);
     if(cur.danismanlik||c.danismanlik){
       out.danismanlik=JSON.parse(JSON.stringify(newer.danismanlik||older.danismanlik||{}));
       out.danismanlik.odemeler=mergeOdemeler(
@@ -1764,7 +2110,7 @@ function applyTombs(state,tl){
     return !(at&&at>=ts(c));
   });
   state.clients.forEach(function(c){
-    ['payments','masraflar','avukatPaylari'].forEach(function(f){
+    ['payments','masraflar','avukatPaylari','sozler'].forEach(function(f){
       c[f]=(c[f]||[]).filter(function(r){
         var at=rDel[String(c.id)+'##'+rowKey(r)];
         return !(at&&at>=ts(r));
@@ -2063,6 +2409,8 @@ async function initSupabase(){
 }
 
 function redrawAll(){
+  try{renderSozUyari();}catch(e){}
+  try{renderTakvim();}catch(e){}
   try{renderClients();}catch(e){}
   try{renderGiderler();}catch(e){}
   try{renderMuhtGelirler();}catch(e){}
@@ -2232,6 +2580,8 @@ document.getElementById('hdate').textContent=new Date().toLocaleDateString('tr-T
 updateGiderAyLabel();
 updateMuhtGelirAyLabel();
 renderClients();
+renderSozUyari();
+renderTakvim();
 initSupabase();
 </script>
 </body>

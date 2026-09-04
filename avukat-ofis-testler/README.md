@@ -10,6 +10,8 @@ node test_sync.js         # senkron motoru: 404, HTML/boş yanıt, iki cihaz
 node test_sunucu.js       # Apps Script: hücre bölme, bozuk gövde, ani küçülme,
                           # kilit, geçmiş, paylaşılan anahtar, geriye uyum
 node test_danismanlik.js  # danışmanlık ücretinin gelir toplamlarına yansıması
+node test_soz.js          # söz verilen ödemeler: gruplama, tahsil/geri al,
+                          # erteleme, uyarı bandı, senkron birleştirmesi
 node test_canli.js        # GERÇEK endpoint'e karşı uçtan uca
                           # (ayrı "_test_v2" sayfası — gerçek veriye dokunmaz)
 ```
