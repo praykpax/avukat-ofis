@@ -1436,35 +1436,109 @@ function renderDanismanlik(){
   }).join('');
 }
 
+// Danışmanlık işaretlemesiyle oluşturulan ödeme kaydının etiketi.
+// Elle girilen ödemelerde bu alan bulunmaz; "Geri al" yalnızca kendi
+// oluşturduğu kaydı siler, elle girilene asla dokunmaz.
+function danEtiket(yil,ay){return 'dan-'+yil+'-'+ay;}
+
+// İşaretlenen ay için kullanılacak ödeme tarihi. İçinde bulunduğumuz ay
+// işaretleniyorsa bugün, geçmiş bir ay işaretleniyorsa o ayın ilk günü —
+// böylece aylık raporlar doğru aya düşer.
+function danTarih(yil,ay){
+  var b=new Date();
+  if(b.getFullYear()===yil&&b.getMonth()===ay) return b.toISOString().split('T')[0];
+  return yil+'-'+('0'+(ay+1)).slice(-2)+'-01';
+}
+
+// O ay için danışmanlık ücreti tutarında, elle girilmiş bir ödeme var mı?
+// (Danışmanlık sekmesi kullanılmadan doğrudan ödeme girilen aylar için.)
+function danElleOdeme(c,yil,ay){
+  var tutar=(c.danismanlik&&c.danismanlik.tutar)||0;
+  if(!tutar) return null;
+  return (c.payments||[]).find(function(p){
+    if(!p.date) return false;
+    var d=new Date(p.date);
+    return d.getFullYear()===yil&&d.getMonth()===ay&&(p.amount||0)===tutar;
+  })||null;
+}
+
 function danOdendi(c,yil,ay){
   // Danışmanlık sekmesinden işaretlenenler
   if(c.danismanlik&&c.danismanlik.odemeler){
     if(c.danismanlik.odemeler.some(function(o){return o.yil===yil&&o.ay===ay&&o.odendi;})) return true;
   }
-  // Ödeme sekmesinden o ay girilen ödemeler
-  if(c.payments&&c.payments.length){
-    return c.payments.some(function(p){
-      if(!p.date) return false;
-      var d=new Date(p.date);
-      return d.getFullYear()===yil&&d.getMonth()===ay;
-    });
-  }
-  return false;
+  // Sekme kullanılmadan doğrudan ödeme olarak girilmiş aylar.
+  // ÖNEMLİ: tutarın aylık danışmanlık ücretiyle eşleşmesi aranır —
+  // aksi halde aynı ay yapılan bir dava ödemesi danışmanlığı da
+  // yanlışlıkla "ödendi" gösterirdi.
+  return !!danElleOdeme(c,yil,ay);
 }
 
 function danMarkOdendi(i){
-  if(!data[i].danismanlik.odemeler) data[i].danismanlik.odemeler=[];
-  var mevcut=data[i].danismanlik.odemeler.find(function(o){return o.yil===danYil&&o.ay===danAy;});
-  if(mevcut){mevcut.odendi=true;mevcut.tarih=new Date().toISOString().split('T')[0];}
-  else data[i].danismanlik.odemeler.push({yil:danYil,ay:danAy,odendi:true,tarih:new Date().toISOString().split('T')[0]});
+  var c=data[i];
+  if(!c.danismanlik) c.danismanlik={aktif:true,tutar:c.agreed||0,odemeler:[]};
+  if(!c.danismanlik.odemeler) c.danismanlik.odemeler=[];
+  var tutar=c.danismanlik.tutar||0;
+  if(!tutar){alert('Önce aylık danışmanlık ücretini girip kaydedin.');return;}
+
+  var tarih=danTarih(danYil,danAy);
+  var mevcut=c.danismanlik.odemeler.find(function(o){return o.yil===danYil&&o.ay===danAy;});
+  if(mevcut){mevcut.odendi=true;mevcut.tarih=tarih;}
+  else c.danismanlik.odemeler.push({yil:danYil,ay:danAy,odendi:true,tarih:tarih});
+
+  // Gelir toplamlarına girmesi için ödeme kaydı da oluştur.
+  danOdemeEkle(c,danYil,danAy);
+
   saveData();syncToSupabase();renderDanismanlik();renderClients();
 }
 
+// Tek bir ay icin danismanlik odeme kaydini olusturur. Zaten varsa
+// (etiketli ya da elle girilmis) hicbir sey yapmaz — tekrar tekrar
+// calistirilabilir.
+function danOdemeEkle(c,yil,ay){
+  var tutar=(c.danismanlik&&c.danismanlik.tutar)||0;
+  if(!tutar) return false;
+  c.payments=c.payments||[];
+  var etiket=danEtiket(yil,ay);
+  if(c.payments.some(function(p){return p.dan===etiket;})) return false;
+  if(danElleOdeme(c,yil,ay)) return false;
+  c.payments.push({
+    id:Date.now()+Math.floor(Math.random()*1000),
+    date:danTarih(yil,ay),amount:tutar,avukat:'',dan:etiket
+  });
+  return true;
+}
+
 function danMarkGeri(i){
-  if(!data[i].danismanlik.odemeler) return;
-  var mevcut=data[i].danismanlik.odemeler.find(function(o){return o.yil===danYil&&o.ay===danAy;});
-  if(mevcut) mevcut.odendi=false;
+  var c=data[i];
+  if(c.danismanlik&&c.danismanlik.odemeler){
+    var mevcut=c.danismanlik.odemeler.find(function(o){return o.yil===danYil&&o.ay===danAy;});
+    if(mevcut) mevcut.odendi=false;
+  }
+  // Yalnızca bu sekmenin oluşturduğu kaydı sil; elle girilen ödemeye dokunma.
+  var etiket=danEtiket(danYil,danAy);
+  (c.payments||[]).forEach(function(p){
+    if(p.dan===etiket) tombAdd('row',null,c.id,rowKey(p));
+  });
+  c.payments=(c.payments||[]).filter(function(p){return p.dan!==etiket;});
   saveData();syncToSupabase();renderDanismanlik();renderClients();
+}
+
+// Eski kayıtları telafi eder: "Ödendi" işaretli olup ödeme kaydı
+// bulunmayan aylar için ödeme oluşturur. Bu aylar daha önce hiçbir
+// gelir toplamına girmiyordu. İşlem tekrarlanabilir, aynı ayı ikinci
+// kez eklemez.
+function danismanlikTelafi(){
+  var degisti=0;
+  (data||[]).forEach(function(c){
+    var dn=c.danismanlik;
+    if(!dn||!dn.odemeler||!dn.tutar) return;
+    dn.odemeler.forEach(function(o){
+      if(!o.odendi) return;
+      if(danOdemeEkle(c,o.yil,o.ay)) degisti++;
+    });
+  });
+  return degisti;
 }
 
 function toggleDanismanlik(i){
@@ -1967,6 +2041,9 @@ async function initSupabase(){
       clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
     },remote);
     adoptState(merged);
+    // "Ödendi" işaretli olup gelire yansımamış danışmanlık aylarını telafi et
+    var telafi=danismanlikTelafi();
+    if(telafi){ saveData(); merged.clients=data; console.log('Danışmanlık telafisi:',telafi,'ay'); }
     _stampSnap=_snapMap();
     snapshot('açılış');
     redrawAll();
