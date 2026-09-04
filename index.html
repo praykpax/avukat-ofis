@@ -1592,7 +1592,8 @@ function sozEkle(i){
   data[i].sozler=data[i].sozler||[];
   data[i].sozler.push({
     id:Date.now()+Math.floor(Math.random()*1000),
-    tarih:tar, tutar:tut, not:nt, durum:'bekliyor', olusturma:bugunStr()
+    tarih:tar, tutar:tut, not:nt, durum:'bekliyor', olusturma:bugunStr(),
+    updatedAt:new Date().toISOString()
   });
   saveData(); syncToSupabase();
   document.getElementById('sz-tutar-'+i).value='';
@@ -1613,6 +1614,7 @@ function sozTahsil(i,sid){
     'Müvekkile bugün tarihli ödeme kaydı eklenecek ve tutar Tahsilat toplamına girecek.')) return;
   sz.durum='odendi';
   sz.tahsilTarihi=bugunStr();
+  sz.updatedAt=new Date().toISOString();
   c.payments=c.payments||[];
   var etiket='soz-'+sz.id;
   if(!c.payments.some(function(pp){ return pp.soz===etiket; })){
@@ -1634,6 +1636,7 @@ function sozErtele(i,sid){
   sz.gecmisTarihler=(sz.gecmisTarihler||[]).concat([sz.tarih]);
   sz.tarih=yeni;
   sz.durum='bekliyor';
+  sz.updatedAt=new Date().toISOString();
   saveData(); syncToSupabase(); rerender(i,'soz');
 }
 
@@ -1642,6 +1645,7 @@ function sozIptal(i,sid){
   if(!sz) return;
   if(!confirm('Bu ödeme sözü iptal edilsin mi? Kayıt geçmişte kalır.')) return;
   sz.durum='iptal';
+  sz.updatedAt=new Date().toISOString();
   saveData(); syncToSupabase(); rerender(i,'soz');
 }
 
@@ -1656,6 +1660,7 @@ function sozGeriAl(i,sid){
   c.payments=(c.payments||[]).filter(function(pp){ return pp.soz!==etiket; });
   sz.durum='bekliyor';
   delete sz.tahsilTarihi;
+  sz.updatedAt=new Date().toISOString();
   saveData(); syncToSupabase(); rerender(i,'soz');
 }
 
@@ -1827,9 +1832,10 @@ function danMarkOdendi(i){
   if(!tutar){alert('Önce aylık danışmanlık ücretini girip kaydedin.');return;}
 
   var tarih=danTarih(danYil,danAy);
+  var simdi=new Date().toISOString();
   var mevcut=c.danismanlik.odemeler.find(function(o){return o.yil===danYil&&o.ay===danAy;});
-  if(mevcut){mevcut.odendi=true;mevcut.tarih=tarih;}
-  else c.danismanlik.odemeler.push({yil:danYil,ay:danAy,odendi:true,tarih:tarih});
+  if(mevcut){mevcut.odendi=true;mevcut.tarih=tarih;mevcut.updatedAt=simdi;}
+  else c.danismanlik.odemeler.push({yil:danYil,ay:danAy,odendi:true,tarih:tarih,updatedAt:simdi});
 
   // Gelir toplamlarına girmesi için ödeme kaydı da oluştur.
   danOdemeEkle(c,danYil,danAy);
@@ -1856,9 +1862,14 @@ function danOdemeEkle(c,yil,ay){
 
 function danMarkGeri(i){
   var c=data[i];
-  if(c.danismanlik&&c.danismanlik.odemeler){
+  var simdi=new Date().toISOString();
+  if(c.danismanlik){
+    c.danismanlik.odemeler=c.danismanlik.odemeler||[];
     var mevcut=c.danismanlik.odemeler.find(function(o){return o.yil===danYil&&o.ay===danAy;});
-    if(mevcut) mevcut.odendi=false;
+    if(mevcut){ mevcut.odendi=false; mevcut.updatedAt=simdi; }
+    // Kayıt yoksa "ödenmedi" bilgisini AÇIKÇA yazıyoruz. Aksi halde
+    // diğer cihazdaki "ödendi" kaydı birleştirmede geri gelirdi.
+    else c.danismanlik.odemeler.push({yil:danYil,ay:danAy,odendi:false,updatedAt:simdi});
   }
   // Yalnızca bu sekmenin oluşturduğu kaydı sil; elle girilen ödemeye dokunma.
   var etiket=danEtiket(danYil,danAy);
@@ -1873,7 +1884,12 @@ function danMarkGeri(i){
 // bulunmayan aylar için ödeme oluşturur. Bu aylar daha önce hiçbir
 // gelir toplamına girmiyordu. İşlem tekrarlanabilir, aynı ayı ikinci
 // kez eklemez.
+var DAN_TELAFI_KEY='avukat_dan_telafi_v1';
 function danismanlikTelafi(){
+  // Bu telafi yalnızca ESKİ işaretlemeleri bir defa düzeltmek içindir.
+  // Her açılışta çalışırsa, kullanıcının "Geri al" dediği ödemeyi
+  // yeniden yaratır. O yüzden bir kez çalışıp kendini kapatır.
+  try{ if(localStorage.getItem(DAN_TELAFI_KEY)) return 0; }catch(e){}
   var degisti=0;
   (data||[]).forEach(function(c){
     var dn=c.danismanlik;
@@ -1883,6 +1899,7 @@ function danismanlikTelafi(){
       if(danOdemeEkle(c,o.yil,o.ay)) degisti++;
     });
   });
+  try{ localStorage.setItem(DAN_TELAFI_KEY,new Date().toISOString()); }catch(e){}
   return degisti;
 }
 
@@ -2037,8 +2054,14 @@ function mergeOdemeler(a,b){
   function add(o){
     if(!o) return;
     var k=o.yil+'-'+o.ay;
-    if(!(k in m)){m[k]=o;order.push(k);}
-    else if(o.odendi||ts(o)>ts(m[k])) m[k]=o;
+    if(!(k in m)){m[k]=o;order.push(k);return;}
+    // Hangi taraf daha yeni damgalandıysa o kazanır. Eskiden "odendi
+    // olan her zaman kazanır" deniyordu; bu yüzden "Geri al" bir sonraki
+    // senkronda geri alınıyor, ödeme kendiliğinden geri geliyordu.
+    var eski=m[k];
+    if(ts(o)&&ts(eski)){ if(ts(o)>ts(eski)) m[k]=o; }
+    else if(ts(o)&&!ts(eski)) m[k]=o;          // damgalı olan, damgasız eskiyi yener
+    else if(!ts(o)&&!ts(eski)&&o.odendi) m[k]=o; // ikisi de damgasız: eski davranış
   }
   (a||[]).forEach(add);
   (b||[]).forEach(add);
@@ -2177,28 +2200,52 @@ function parseRemote(txt){
 async function gasGet(){
   var r=await fetch(GAS_URL+'?type='+GAS_TYPE+'&_='+Date.now(),{cache:'no-store'});
   if(!r.ok) throw new Error('HTTP '+r.status);
-  return parseRemote(await r.text());
+  var txt=await r.text();
+  var o=parseRemote(txt);
+  // İmzayı gelen metinden kendimiz hesaplıyoruz; sunucudaki _sig ile
+  // aynı algoritma olduğu için değerler birebir tutuyor.
+  o.__sig=sunucuSigHesapla(txt);
+  return o;
 }
-async function gasPost(state){
+
+// Sunucudaki metnin imzası — sunucu tarafındaki _sig ile AYNI algoritma.
+function sunucuSigHesapla(str){
+  var h=5381;
+  for(var i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0;
+  return h.toString(36)+'.'+str.length;
+}
+// Sunucunun en son onayladığı içeriğin imzası. Bu biliniyorsa yazmadan
+// önce sunucuyu okumaya gerek kalmaz — imzayı gövdeyle birlikte
+// gönderiyoruz, sunucu uyuşmazsa "catisma" deyip yazmayı reddediyor.
+var _sunucuSig=null;
+var _catismaDestegi=false;   // sunucu basedOn denetimini destekliyor mu
+
+async function gasPost(gonderilecekMetin){
   var r=await fetch(GAS_URL+'?type='+GAS_TYPE,{
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(state)
+    body:gonderilecekMetin
   });
   if(!r.ok) throw new Error('HTTP '+r.status);
-  // Sunucu v2 gerekçeli hata döndürür; v1 sadece {"ok":true} döner.
   var txt='';
   try{txt=await r.text();}catch(e){}
-  if(txt&&txt.trim().charAt(0)==='{'){
-    var y=null;
-    try{y=JSON.parse(txt);}catch(e){}
-    if(y&&y.ok===false){
-      var hata=new Error(y.error||'sunucu-reddetti');
-      hata.sunucu=y;
-      throw hata;
-    }
+  var y=null;
+  if(txt&&txt.trim().charAt(0)==='{'){ try{y=JSON.parse(txt);}catch(e){} }
+  if(y&&y.ok===false){
+    var hata=new Error(y.error||'sunucu-reddetti');
+    hata.sunucu=y;
+    if(y.sig) _sunucuSig=y.sig;      // çatışmada sunucunun güncel imzası
+    else _sunucuSig=null;
+    throw hata;
   }
-  return true;
+  // Sunucu v2 yazdığını boyutla doğruluyor; ayrıca imza dönerse saklıyoruz.
+  if(y&&y.ok===true&&y.boyut===gonderilecekMetin.length){
+    if(y.sig){ _sunucuSig=y.sig; _catismaDestegi=true; }
+    else _sunucuSig=null;
+    return {onayli:true};
+  }
+  _sunucuSig=null;
+  return {onayli:false};             // eski sunucu — geri okuyup doğrula
 }
 
 // ------------------------------------------------------------
@@ -2303,47 +2350,62 @@ function syncToSupabase(){
   saveData(); saveGiderler(); saveMuhtGelirler(); saveTombs();
   setSyncStatus('syncing','Kaydediliyor...');
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(function(){runSync();},1200);
+  _syncTimer=setTimeout(function(){runSync();},500);
 }
 
 async function runSync(){
   if(_syncBusy){_syncAgain=true;return;}
   _syncBusy=true;
+  setSyncStatus('syncing','Kaydediliyor...');
   snapshot('senkron öncesi');
   var son=null;
   try{
     for(var i=0;i<SYNC_MAX_TRY;i++){
       try{
-        // 1) Sunucuyu oku (körlemesine yazma yok)
-        var remote=await gasGet();
+        // Hızlı yol: sunucunun en son onayladığı imza elimizdeyse ve
+        // yerel veri o imzadan türediyse, okumadan doğrudan yazarız.
+        // Sunucu imza uyuşmazsa yazmayı reddedip "catisma" döner —
+        // yani körlemesine üzerine yazma riski yok.
+        var hizli=(_catismaDestegi&&_sunucuSig!==null);
 
-        // 2) Birleştir — iki taraftaki her kayıt korunur
-        var merged=mergeState({
-          clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
-        },remote);
+        if(!hizli){
+          // 1) Sunucuyu oku
+          var remote=await gasGet();
 
-        // 3) Birleşmiş hali yerele al (uzaktaki yenilikler de gelsin)
-        var oncekiSig=stateSig({clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs});
-        adoptState(merged);
-        if(stateSig(merged)!==oncekiSig){ _stampSnap=_snapMap(); redrawAll(); }
+          // 2) Birleştir — iki taraftaki her kayıt korunur
+          var merged=mergeState({
+            clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
+          },remote);
 
-        // 4) Sunucuda zaten aynısı varsa yazmaya gerek yok
-        if(stateSig(merged)===stateSig(remote)){
-          _dirty=false; pendSet(null);
-          setSyncStatus('ok','Kaydedildi ✓');
-          _syncBusy=false;
-          if(_syncAgain){_syncAgain=false;runSync();}
-          return;
+          // 3) Birleşmiş hali yerele al (uzaktaki yenilikler de gelsin)
+          var oncekiSig=stateSig({clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs});
+          adoptState(merged);
+          if(stateSig(merged)!==oncekiSig){ _stampSnap=_snapMap(); redrawAll(); }
+
+          // 4) Sunucuda zaten aynısı varsa yazmaya gerek yok
+          if(stateSig(merged)===stateSig(remote)){
+            _dirty=false; pendSet(null);
+            _sunucuSig=remote.__sig||_sunucuSig;
+            setSyncStatus('ok','Kaydedildi ✓');
+            _syncBusy=false;
+            if(_syncAgain){_syncAgain=false;runSync();}
+            return;
+          }
         }
 
         // 5) Yaz
         var gonderilen=buildState();
-        pendSet({at:new Date().toISOString(),json:JSON.stringify(gonderilen)});
-        await gasPost(gonderilen);
+        if(_sunucuSig) gonderilen.meta.basedOn=_sunucuSig;
+        var metin=JSON.stringify(gonderilen);
+        pendSet({at:new Date().toISOString(),json:metin});
+        var yanit=await gasPost(metin);
 
-        // 6) GERİ OKU VE DOĞRULA — asıl güvence burası
-        var kontrol=await gasGet();
-        if(stateSig(kontrol)!==stateSig(gonderilen)) throw new Error('dogrulama-uyusmadi');
+        // 6) Sunucu yazdığını onaylamadıysa geri okuyup doğrula.
+        //    (v2 boyutu doğrular; eski sunucularda bu tur gerekir.)
+        if(!yanit.onayli){
+          var kontrol=await gasGet();
+          if(stateSig(kontrol)!==stateSig(gonderilen)) throw new Error('dogrulama-uyusmadi');
+        }
 
         _dirty=false; pendSet(null);
         setSyncStatus('ok','Kaydedildi ✓ '+new Date().toLocaleTimeString('tr-TR').slice(0,5));
@@ -2353,6 +2415,14 @@ async function runSync(){
 
       }catch(e){
         son=e;
+        // Çatışma: başka bir cihaz yazmış. İmzayı düşür ki bir sonraki
+        // deneme tam turu (oku + birleştir + yaz) yapsın; bekleme yok.
+        if(e&&e.sunucu&&e.sunucu.error==='catisma'){
+          _sunucuSig=null;
+          setSyncStatus('syncing','Başka cihazla birleştiriliyor...');
+          continue;
+        }
+        _sunucuSig=null;
         setSyncStatus('syncing','Yeniden deneniyor ('+(i+1)+'/'+SYNC_MAX_TRY+')...');
         await new Promise(function(res){setTimeout(res,SYNC_BACKOFF[i]||30000);});
       }
@@ -2393,6 +2463,7 @@ async function initSupabase(){
     _stampSnap=_snapMap();
     snapshot('açılış');
     redrawAll();
+    _sunucuSig=remote.__sig||null;
     if(stateSig(merged)!==stateSig(remote)){
       _dirty=true; runSync();                 // yerelde fazlası var → yukarı taşı
     } else {

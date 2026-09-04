@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * AVUKAT OFİS — Apps Script sunucusu v2
+ * AVUKAT OFİS — Apps Script sunucusu v2.1
  * ============================================================
  * Bu dosya, https://script.google.com üzerindeki "muhasebe veri"
  * projesindeki Kod.gs dosyasının YERİNE yapıştırılacaktır.
@@ -15,6 +15,12 @@
  *  Geçmiş yok, geri dönüş yok         →  Her yazmadan önce geçmişe alınır
  *  Yedek yok                          →  Günlük Drive yedeği
  *  Hata sessizce yutulur              →  Her yanıt ok/hata bilgisi taşır
+ *
+ * v2.1 eki: Her yanıt içeriğin imzasını (sig) döndürür. İstemci bu imzayı
+ * bir sonraki yazmada meta.basedOn olarak geri gönderir; imza tutmuyorsa
+ * (yani araya başka bir cihaz yazmışsa) sunucu yazmayı reddedip "catisma"
+ * der. Böylece istemci her kayıtta önce okumak zorunda kalmaz — kaydetme
+ * üç istekten bire iner, üzerine yazma riski ise doğmaz.
  *
  * KURULUM
  *  1) Kod.gs içeriğini tamamen bununla değiştir.
@@ -60,6 +66,16 @@ function _write(sh, str) {
   if (!parca.length) parca = [['']];
   sh.clear();
   sh.getRange(1, 1, parca.length, 1).setValues(parca);
+}
+
+/**
+ * İçerik imzası. İstemcideki sunucuSigHesapla ile AYNI algoritma
+ * olmalıdır (djb2, ileri yönde, sonuna uzunluk eklenir).
+ */
+function _sig(str) {
+  var h = 5381;
+  for (var i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return h.toString(36) + '.' + str.length;
 }
 
 function _json(o) {
@@ -137,6 +153,10 @@ function doGet(e) {
       return ContentService.createTextOutput(s || '{}')
         .setMimeType(ContentService.MimeType.JSON);
     }
+    if (p.action === 'sig') {
+      var mevcutMetin = _read(_sheet(type));
+      return _json({ ok: true, sig: _sig(mevcutMetin), boyut: mevcutMetin.length });
+    }
     var val = _read(_sheet(type));
     return ContentService.createTextOutput(val || '{}')
       .setMimeType(ContentService.MimeType.JSON);
@@ -182,6 +202,20 @@ function doPost(e) {
     var eskiObj = null;
     try { eskiObj = eski ? JSON.parse(eski) : null; } catch (e4) { eskiObj = null; }
 
+    // 1b) Çatışma denetimi — istemci hangi sürümün üzerine yazdığını
+    //     bildiriyorsa, sunucudaki içerik o sürümden farklıysa yazma
+    //     reddedilir. Araya giren başka bir cihazın verisi ezilmez.
+    var basedOn = (yeni.meta && yeni.meta.basedOn) || null;
+    if (basedOn) {
+      var suankiSig = _sig(eski);
+      if (basedOn !== suankiSig) {
+        return _json({
+          ok: false, error: 'catisma', sig: suankiSig,
+          mesaj: 'Sunucudaki veri bu arada değişti, birleştirilmesi gerekiyor.'
+        });
+      }
+    }
+
     // 2) Ani küçülme denetimi — kaza sonucu toplu silmeyi durdurur.
     //    Bilerek yapılan silmeler istemcide mezar taşıyla yürüdüğü için
     //    tek seferde yarıdan fazla kayıt düşmesi normal değildir.
@@ -201,7 +235,10 @@ function doPost(e) {
     _write(sh, govde);
     _gunlukYedek(type, govde);
 
-    return _json({ ok: true, at: new Date().toISOString(), sayilar: _sayilar(yeni), boyut: govde.length });
+    return _json({
+      ok: true, at: new Date().toISOString(), sayilar: _sayilar(yeni),
+      boyut: govde.length, sig: _sig(govde)
+    });
 
   } catch (err) {
     return _json({ ok: false, error: String(err) });

@@ -196,6 +196,37 @@ console.log('\n=== 9. Günlük Drive yedeği ===');
   ok('yedek adı tarihli', /avukat-avukat-2026-09-04\.json/.test(driveYazilan[0].ad), driveYazilan[0] && driveYazilan[0].ad);
 }
 
+
+console.log('=== 11. Imza ve catisma denetimi (v2.1) ===');
+{
+  kitap.sheets = {};
+  const y1 = post(durum(10));
+  ok('yanit imza donduruyor', typeof y1.sig === 'string' && y1.sig.length > 0, y1.sig);
+  ok('imza icerikle tutarli', y1.sig === _sig(durum(10)), y1.sig + ' vs ' + _sig(durum(10)));
+  const sigGet = JSON.parse(get({ action: 'sig' }));
+  ok('sig eylemi ayni imzayi veriyor', sigGet.sig === y1.sig, JSON.stringify(sigGet));
+
+  // dogru basedOn ile yazma gecmeli
+  const govde2 = JSON.parse(durum(11)); govde2.meta.basedOn = y1.sig;
+  const y2 = post(JSON.stringify(govde2));
+  ok('dogru basedOn ile yazildi', y2.ok === true, JSON.stringify(y2).slice(0, 120));
+
+  // eski basedOn ile yazma REDDEDILMELI (araya baska cihaz girmis)
+  const govde3 = JSON.parse(durum(12)); govde3.meta.basedOn = y1.sig;   // artik eski
+  const y3 = post(JSON.stringify(govde3));
+  ok('eski basedOn reddedildi', y3.ok === false && y3.error === 'catisma', JSON.stringify(y3).slice(0, 140));
+  ok('catismada guncel imza bildiriliyor', y3.sig === y2.sig, y3.sig + ' vs ' + y2.sig);
+  ok('veri ezilmedi, hala 11 kayit', JSON.parse(get()).clients.length === 11, JSON.parse(get()).clients.length);
+
+  // guncel imzayla tekrar denenince gecmeli
+  const govde4 = JSON.parse(durum(12)); govde4.meta.basedOn = y3.sig;
+  const y4 = post(JSON.stringify(govde4));
+  ok('guncel imzayla yazma gecti', y4.ok === true && JSON.parse(get()).clients.length === 12, JSON.stringify(y4).slice(0,120));
+
+  // basedOn gondermezse eski istemciler calismaya devam etmeli
+  const y5 = post(durum(13));
+  ok('basedOn gondermeden yazma hala calisiyor (geriye uyum)', y5.ok === true, JSON.stringify(y5).slice(0,120));
+}
 console.log('\n=== 10. Eski tek hücrelik veri okunabiliyor (geriye uyum) ===');
 {
   kitap.sheets = {};
