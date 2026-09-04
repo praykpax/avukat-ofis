@@ -40,6 +40,21 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 .sync-dot.ok{background:#4ade80}
 .sync-dot.err{background:#f87171}
 .sync-dot.syncing{background:#fbbf24;animation:blink .8s infinite}
+.sync-banner{display:none;align-items:center;gap:10px;background:#7f1d1d;color:#fee2e2;border:1px solid #b91c1c;
+  padding:10px 14px;font-size:13px;font-weight:600;line-height:1.4}
+.sync-banner-ico{font-size:16px}
+.sync-banner-btn{margin-left:auto;background:#fee2e2;color:#7f1d1d;border:0;border-radius:4px;
+  padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
+.sync-banner-btn:hover{background:#fff}
+.backup-btn.hist{background:rgba(148,163,184,.15);color:#94a3b8}
+.snap-panel{display:none;padding:10px 14px;background:rgba(148,163,184,.06);
+  border-bottom:1px solid var(--line);max-height:280px;overflow-y:auto}
+.snap-head{font-size:11px;color:var(--ink3);margin-bottom:8px}
+.snap-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12px;border-top:1px solid var(--line)}
+.snap-row .snap-when{font-weight:600;min-width:130px}
+.snap-row .snap-info{color:var(--ink3);flex:1}
+.snap-row button{background:rgba(74,222,128,.15);color:#4ade80;border:0;border-radius:4px;
+  padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* SETUP BANNER */
@@ -355,13 +370,25 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background
 </div>
 
 
+<!-- Senkron Hata Bandı -->
+<div class="sync-banner" id="sync-banner">
+  <span class="sync-banner-ico">⚠</span>
+  <span id="sync-banner-text"></span>
+  <button class="sync-banner-btn" onclick="runSync()">Tekrar dene</button>
+</div>
+
 <!-- Yedek Bandı -->
 <div class="backup-bar">
   <span>Yedek:</span>
   <button class="backup-btn dl" onclick="yedekAl()">⬇ Yedek Al</button>
   <button class="backup-btn ul" onclick="document.getElementById('yedek-input').click()">⬆ Yedek Yükle</button>
   <input type="file" id="yedek-input" accept=".json" style="display:none" onchange="yedekYukle(this)">
+  <button class="backup-btn hist" onclick="snapPanelToggle()">🕘 Otomatik Yedekler</button>
   <span class="backup-msg" id="backup-msg"></span>
+</div>
+<div class="snap-panel" id="snap-panel">
+  <div class="snap-head">Bu cihazda tutulan otomatik anlık yedekler (en son 40 kayıt)</div>
+  <div id="snap-list"></div>
 </div>
 
 <nav class="main-nav">
@@ -562,7 +589,9 @@ var defaultClients = [
 ];
 
 function loadData(){
-  try{var s=localStorage.getItem(STORAGE_KEY);return s?JSON.parse(s):JSON.parse(JSON.stringify(defaultClients));}catch(e){return JSON.parse(JSON.stringify(defaultClients));}
+  // ÖNEMLİ: localStorage boşken ÖRNEK veri yüklenmez. Aksi halde ilk
+  // açılışta demo müvekkiller gerçek veriyle birleşip sunucuya yazılırdı.
+  try{var s=localStorage.getItem(STORAGE_KEY);return s?JSON.parse(s):[];}catch(e){return [];}
 }
 function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
 
@@ -843,7 +872,7 @@ function addPay(i){
   data[i].payments.push({date:d,amount:a,avukat:p});
   saveData(); syncToSupabase(); rerender(i,'odeme');
 }
-function delPay(i,pi){if(!confirm('Silinsin mi?')) return; data[i].payments.splice(pi,1); saveData(); syncToSupabase(); rerender(i,'odeme')}
+function delPay(i,pi){if(!confirm('Silinsin mi?')) return; tombAdd('row',null,data[i].id,rowKey(data[i].payments[pi])); data[i].payments.splice(pi,1); saveData(); syncToSupabase(); rerender(i,'odeme')}
 
 function addMasraf(i){
   var d=document.getElementById('md-'+i).value;
@@ -854,7 +883,7 @@ function addMasraf(i){
   data[i].masraflar.push({tarih:d,tutar:t,aciklama:a||'Masraf',yapan:y||'—'});
   saveData(); syncToSupabase(); rerender(i,'masraf');
 }
-function delMasraf(i,mi){if(!confirm('Silinsin mi?')) return; data[i].masraflar.splice(mi,1); saveData(); syncToSupabase(); rerender(i,'masraf')}
+function delMasraf(i,mi){if(!confirm('Silinsin mi?')) return; tombAdd('row',null,data[i].id,rowKey(data[i].masraflar[mi])); data[i].masraflar.splice(mi,1); saveData(); syncToSupabase(); rerender(i,'masraf')}
 
 function addAvukat(i){
   var av=document.getElementById('av-'+i).value;
@@ -865,7 +894,7 @@ function addAvukat(i){
   data[i].avukatPaylari.push({avukat:av,tarih:d,tutar:t,aciklama:a});
   saveData(); syncToSupabase(); rerender(i,'avukat');
 }
-function delAvukat(i,ai){if(!confirm('Silinsin mi?')) return; data[i].avukatPaylari.splice(ai,1); saveData(); syncToSupabase(); rerender(i,'avukat')}
+function delAvukat(i,ai){if(!confirm('Silinsin mi?')) return; tombAdd('row',null,data[i].id,rowKey(data[i].avukatPaylari[ai])); data[i].avukatPaylari.splice(ai,1); saveData(); syncToSupabase(); rerender(i,'avukat')}
 
 function rerender(i,tab){
   renderClients();
@@ -959,6 +988,7 @@ function giderEkle(){
 
 function delGider(id){
   if(!confirm('Silinsin mi?')) return;
+  tombAdd('gider',id);
   giderler=giderler.filter(function(g){return g.id!==id;});
   saveGiderler();
   syncToSupabase();
@@ -1042,6 +1072,7 @@ function muhtGelirEkle(){
 
 function delMuhtGelir(id){
   if(!confirm('Silinsin mi?')) return;
+  tombAdd('gelir',id);
   muhtGelirler=muhtGelirler.filter(function(g){return g.id!==id;});
   saveMuhtGelirler();
   syncToSupabase();
@@ -1346,6 +1377,8 @@ function saveClientEdit(i){
 
 function deleteClient(i){
   if(!confirm('"'+data[i].name+'" silinsin mi? Bu işlem geri alınamaz.')) return;
+  snapshot('müvekkil silinmeden önce');
+  tombAdd('client',data[i].id);
   data.splice(i,1);
   saveData();
   syncToSupabase();
@@ -1467,82 +1500,535 @@ function danismanlikGecmis(i){
   }).join('');
 }
 
-var GAS_URL='https://script.google.com/macros/s/AKfycbxWGtv9z69zEuAdqtdqaQWxA0VRKU5b28SEA2rRh-bj_iKyQ-oPSX6xbTLcN7tmsndpNQ/exec';
+// ============================================================
+// SENKRONİZASYON MOTORU v2 — veri kaybına karşı korumalı
+// ------------------------------------------------------------
+// Tasarım kuralları:
+//  1) Yerel kayıt her zaman ÖNCE yapılır, hiçbir koşulda atlanmaz.
+//  2) Sunucuya yazma "oku → birleştir → yaz → geri oku ve doğrula"
+//     döngüsüyle yapılır. Doğrulanmayan yazma başarılı sayılmaz.
+//  3) Hiçbir yerde körlemesine üzerine yazma yoktur. Birleştirme
+//     birleşim (union) esaslıdır: iki taraftan birinde olan kayıt
+//     asla düşmez. Silme yalnızca açık "mezar taşı" (tombstone) ile olur.
+//  4) Başarısız yazmalar kuyruğa alınır, geri çekilerek (backoff)
+//     tekrar denenir ve kullanıcıya kırmızı uyarı olarak gösterilir.
+//  5) Her yazmadan önce yerel anlık görüntü (snapshot) alınır;
+//     son 40 görüntüden herhangi biri geri yüklenebilir.
+// ============================================================
 
+var GAS_URL='https://script.google.com/macros/s/AKfycbxWGtv9z69zEuAdqtdqaQWxA0VRKU5b28SEA2rRh-bj_iKyQ-oPSX6xbTLcN7tmsndpNQ/exec';
+var GAS_TYPE='avukat';
+var TOMB_KEY='avukat_tombs_v1';
+var SNAP_KEY='avukat_snapshots_v1';
+var PEND_KEY='avukat_pending_v1';
+var DEV_KEY='avukat_device_v1';
+
+var SYNC_MAX_TRY=6;                     // bir tur içinde deneme sayısı
+var SYNC_BACKOFF=[1000,3000,7000,15000,30000,60000];
+var SNAP_LIMIT=40;                      // saklanacak yerel görüntü sayısı
+var TOMB_TTL_DAYS=180;                  // mezar taşı saklama süresi
+
+var deviceId=(function(){
+  try{
+    var d=localStorage.getItem(DEV_KEY);
+    if(!d){d=Math.random().toString(36).slice(2,8);localStorage.setItem(DEV_KEY,d);}
+    return d;
+  }catch(e){return 'anon';}
+})();
+
+// ------------------------------------------------------------
+// MEZAR TAŞLARI (silme kayıtları)
+// ------------------------------------------------------------
+function loadTombs(){
+  try{var s=localStorage.getItem(TOMB_KEY);return s?JSON.parse(s):[];}catch(e){return [];}
+}
+function saveTombs(){
+  try{localStorage.setItem(TOMB_KEY,JSON.stringify(tombs));}catch(e){}
+}
+var tombs=loadTombs();
+
+function tombAdd(kind,id,cid,sig){
+  tombs.push({
+    k:kind,
+    id:(id==null?null:String(id)),
+    cid:(cid==null?null:String(cid)),
+    sig:(sig||null),
+    at:new Date().toISOString()
+  });
+  saveTombs();
+}
+function tombPrune(list){
+  var kes=new Date(Date.now()-TOMB_TTL_DAYS*864e5).toISOString();
+  return (list||[]).filter(function(t){return t&&t.at&&t.at>kes;});
+}
+
+// ------------------------------------------------------------
+// YARDIMCILAR
+// ------------------------------------------------------------
+function ts(o){return (o&&o.updatedAt)||'';}
+
+// Alt satırlar (ödeme / masraf / avukat payı) için kimlik anahtarı.
+// Eski kayıtlarda id yok; o zaman içerik imzası kullanılır.
+function rowKey(r){
+  if(!r||typeof r!=='object') return 's:'+String(r);
+  if(r.id!=null) return 'id:'+r.id;
+  return 's:'+[r.date||r.tarih||'',r.amount||r.tutar||0,r.avukat||'',r.aciklama||'',r.yapan||''].join('|');
+}
+
+function canon(v){
+  if(v===null||typeof v!=='object') return JSON.stringify(v)||'null';
+  if(Array.isArray(v)) return '['+v.map(canon).join(',')+']';
+  return '{'+Object.keys(v).sort().map(function(k){
+    return JSON.stringify(k)+':'+canon(v[k]);
+  }).join(',')+'}';
+}
+function hashStr(s){
+  var h=5381,i=s.length;
+  while(i) h=(h*33^s.charCodeAt(--i))>>>0;
+  return h.toString(36)+'.'+s.length;
+}
+// Yalnızca gerçek veriyi imzalar (meta alanları hariç) —
+// böylece zaman damgası farkı yüzünden yanlış "uyuşmadı" çıkmaz.
+function stateSig(o){
+  return hashStr(canon({
+    c:(o&&o.clients)||[],
+    g:(o&&o.giderler)||[],
+    m:(o&&o.muhtGelirler)||[],
+    t:(o&&o.tombs)||[]
+  }));
+}
+
+// ------------------------------------------------------------
+// BİRLEŞTİRME — hiçbir kayıt düşmez
+// ------------------------------------------------------------
+function mergeRows(a,b){
+  var m={},order=[];
+  function add(r){
+    var k=rowKey(r);
+    if(!(k in m)){m[k]=r;order.push(k);}
+    else if(ts(r)>ts(m[k])) m[k]=r;
+  }
+  (a||[]).forEach(add);
+  (b||[]).forEach(add);
+  return order.map(function(k){return m[k];});
+}
+
+function mergeOdemeler(a,b){
+  var m={},order=[];
+  function add(o){
+    if(!o) return;
+    var k=o.yil+'-'+o.ay;
+    if(!(k in m)){m[k]=o;order.push(k);}
+    else if(o.odendi||ts(o)>ts(m[k])) m[k]=o;
+  }
+  (a||[]).forEach(add);
+  (b||[]).forEach(add);
+  return order.map(function(k){return m[k];});
+}
+
+function mergeClients(loc,rem){
+  var m={},order=[];
+  function add(c){
+    if(!c||c.id==null) return;
+    var k=String(c.id);
+    if(!(k in m)){m[k]=JSON.parse(JSON.stringify(c));order.push(k);return;}
+    var cur=m[k];
+    var newer=(ts(c)>ts(cur))?c:cur;
+    var older=(newer===c)?cur:c;
+    var out=JSON.parse(JSON.stringify(newer));
+    // Satır dizileri her zaman BİRLEŞİM — iki cihazda ayrı ayrı
+    // girilen ödemelerin ikisi de korunur.
+    out.payments      = mergeRows(cur.payments,      c.payments);
+    out.masraflar     = mergeRows(cur.masraflar,     c.masraflar);
+    out.avukatPaylari = mergeRows(cur.avukatPaylari, c.avukatPaylari);
+    if(cur.danismanlik||c.danismanlik){
+      out.danismanlik=JSON.parse(JSON.stringify(newer.danismanlik||older.danismanlik||{}));
+      out.danismanlik.odemeler=mergeOdemeler(
+        (cur.danismanlik||{}).odemeler,
+        (c.danismanlik||{}).odemeler
+      );
+    }
+    // Boş bir alan, dolu olanı ezmesin.
+    ['name','tckn','court','city','dosya','ozet'].forEach(function(f){
+      if(!out[f]&&older[f]) out[f]=older[f];
+    });
+    if(!out.agreed&&older.agreed) out.agreed=older.agreed;
+    m[k]=out;
+  }
+  (loc||[]).forEach(add);
+  (rem||[]).forEach(add);
+  return order.map(function(k){return m[k];});
+}
+
+function mergeById(a,b){
+  var m={},order=[];
+  function add(r){
+    if(!r) return;
+    var k=(r.id!=null)?String(r.id):rowKey(r);
+    if(!(k in m)){m[k]=r;order.push(k);}
+    else if(ts(r)>ts(m[k])) m[k]=r;
+  }
+  (a||[]).forEach(add);
+  (b||[]).forEach(add);
+  return order.map(function(k){return m[k];});
+}
+
+// Mezar taşlarını uygula: silme, ancak silme kaydı ilgili kaydın
+// son güncelleme anından YENİ ise geçerlidir (silinip tekrar
+// eklenen kayıt geri gelmez, sildikten sonra düzenlenen kayıt kaybolmaz).
+function applyTombs(state,tl){
+  var cDel={},gDel={},mDel={},rDel={};
+  (tl||[]).forEach(function(t){
+    if(!t) return;
+    if(t.k==='client')     cDel[t.id]=t.at;
+    else if(t.k==='gider') gDel[t.id]=t.at;
+    else if(t.k==='gelir') mDel[t.id]=t.at;
+    else if(t.k==='row')   rDel[t.cid+'##'+t.sig]=t.at;
+  });
+  state.clients=(state.clients||[]).filter(function(c){
+    var at=cDel[String(c.id)];
+    return !(at&&at>=ts(c));
+  });
+  state.clients.forEach(function(c){
+    ['payments','masraflar','avukatPaylari'].forEach(function(f){
+      c[f]=(c[f]||[]).filter(function(r){
+        var at=rDel[String(c.id)+'##'+rowKey(r)];
+        return !(at&&at>=ts(r));
+      });
+    });
+  });
+  state.giderler=(state.giderler||[]).filter(function(g){
+    var at=gDel[String(g.id)];
+    return !(at&&at>=ts(g));
+  });
+  state.muhtGelirler=(state.muhtGelirler||[]).filter(function(g){
+    var at=mDel[String(g.id)];
+    return !(at&&at>=ts(g));
+  });
+  return state;
+}
+
+function mergeState(loc,rem){
+  var out={
+    clients:      mergeClients(loc.clients, rem.clients),
+    giderler:     mergeById(loc.giderler,    rem.giderler),
+    muhtGelirler: mergeById(loc.muhtGelirler,rem.muhtGelirler),
+    tombs:        tombPrune(mergeById(loc.tombs,rem.tombs))
+  };
+  return applyTombs(out,out.tombs);
+}
+
+// ------------------------------------------------------------
+// DURUM OKUMA / YAZMA
+// ------------------------------------------------------------
+function buildState(){
+  return {
+    clients:data,
+    giderler:giderler,
+    muhtGelirler:muhtGelirler,
+    tombs:tombs,
+    meta:{updatedAt:new Date().toISOString(),device:deviceId,ver:4}
+  };
+}
+function adoptState(s){
+  data         = s.clients||[];
+  giderler     = s.giderler||[];
+  muhtGelirler = s.muhtGelirler||[];
+  tombs        = tombPrune(s.tombs||[]);
+  saveData(); saveGiderler(); saveMuhtGelirler(); saveTombs();
+}
+
+// Gelen yanıtın gerçekten beklenen veri olduğunu doğrular.
+// Bozuk / boş / HTML yanıtlar asla veri yerine geçmez.
+function parseRemote(txt){
+  if(!txt) throw new Error('bos-yanit');
+  var t=txt.replace(/^﻿/,'').trim();
+  if(t.charAt(0)!=='{') throw new Error('json-degil');
+  var o=JSON.parse(t);
+  if(!o||typeof o!=='object') throw new Error('gecersiz');
+  if(!('clients' in o)) o.clients=[];
+  if(!Array.isArray(o.clients)) throw new Error('clients-dizi-degil');
+  o.giderler     = Array.isArray(o.giderler)?o.giderler:[];
+  o.muhtGelirler = Array.isArray(o.muhtGelirler)?o.muhtGelirler:[];
+  o.tombs        = Array.isArray(o.tombs)?o.tombs:[];
+  return o;
+}
+
+async function gasGet(){
+  var r=await fetch(GAS_URL+'?type='+GAS_TYPE+'&_='+Date.now(),{cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return parseRemote(await r.text());
+}
+async function gasPost(state){
+  var r=await fetch(GAS_URL+'?type='+GAS_TYPE,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(state)
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  // Sunucu v2 gerekçeli hata döndürür; v1 sadece {"ok":true} döner.
+  var txt='';
+  try{txt=await r.text();}catch(e){}
+  if(txt&&txt.trim().charAt(0)==='{'){
+    var y=null;
+    try{y=JSON.parse(txt);}catch(e){}
+    if(y&&y.ok===false){
+      var hata=new Error(y.error||'sunucu-reddetti');
+      hata.sunucu=y;
+      throw hata;
+    }
+  }
+  return true;
+}
+
+// ------------------------------------------------------------
+// YEREL ANLIK GÖRÜNTÜLER (yerel geri alma ağı)
+// ------------------------------------------------------------
+function snapList(){
+  try{return JSON.parse(localStorage.getItem(SNAP_KEY)||'[]');}catch(e){return [];}
+}
+function snapshot(reason){
+  try{
+    var snaps=snapList();
+    var json=JSON.stringify({clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs});
+    if(snaps.length&&snaps[snaps.length-1].json===json) return; // değişmemişse tekrar yazma
+    snaps.push({at:new Date().toISOString(),reason:reason||'',json:json});
+    while(snaps.length>SNAP_LIMIT) snaps.shift();
+    try{
+      localStorage.setItem(SNAP_KEY,JSON.stringify(snaps));
+    }catch(e){
+      // Kota dolduysa eski yarıyı at, bir kez daha dene.
+      snaps=snaps.slice(-10);
+      localStorage.setItem(SNAP_KEY,JSON.stringify(snaps));
+    }
+  }catch(e){}
+}
+
+// ------------------------------------------------------------
+// BEKLEYEN KUYRUK
+// ------------------------------------------------------------
+function pendSet(v){
+  try{
+    if(v) localStorage.setItem(PEND_KEY,JSON.stringify(v));
+    else  localStorage.removeItem(PEND_KEY);
+  }catch(e){}
+}
+function pendGet(){
+  try{var s=localStorage.getItem(PEND_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+
+// ------------------------------------------------------------
+// DURUM GÖSTERGESİ
+// ------------------------------------------------------------
+var _syncState='';
 function setSyncStatus(state,label){
+  _syncState=state;
   var dot=document.getElementById('sync-dot');
   var lbl=document.getElementById('sync-label');
-  dot.className='sync-dot'+(state?' '+state:'');
-  lbl.textContent=label||'';
-}
-
-function initSupabase(){
-  setSyncStatus('syncing','Yükleniyor...');
-  loadFromSupabase();
-}
-
-async function loadFromSupabase(){
-  try{
-    var r=await fetch(GAS_URL+'?type=avukat');
-    var remote=await r.json();
-    if(remote&&remote.clients){
-      data=remote.clients;
-      giderler=remote.giderler||giderler;
-      muhtGelirler=remote.muhtGelirler||muhtGelirler;
-      saveData();saveGiderler();saveMuhtGelirler();
-      renderClients();
-      renderGiderler();
+  if(dot) dot.className='sync-dot'+(state?' '+state:'');
+  if(lbl) lbl.textContent=label||'';
+  var ban=document.getElementById('sync-banner');
+  if(ban){
+    if(state==='err'){
+      ban.style.display='flex';
+      document.getElementById('sync-banner-text').textContent=label||'Kaydedilemedi';
     } else {
-      await pushToSupabase();
+      ban.style.display='none';
     }
-    setSyncStatus('ok','Senkron ✓');
-  }catch(e){
-    setSyncStatus('err','Hata');
-    console.error('GAS load error:',e);
   }
 }
 
-async function pushToSupabase(){
-  setSyncStatus('syncing','Kaydediliyor...');
-  try{
-    await fetch(GAS_URL+'?type=avukat',{
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({clients:data,giderler:giderler,muhtGelirler:muhtGelirler})
+// ------------------------------------------------------------
+// DEĞİŞEN KAYITLARI DAMGALA
+// Her mutasyon noktasına elle dokunmadan, son senkron anındaki
+// görüntüyle karşılaştırıp değişen kayda updatedAt basar.
+// ------------------------------------------------------------
+var _stampSnap=null;
+function _snapMap(){
+  var m={};
+  (data||[]).forEach(function(c){m['c'+c.id]=JSON.stringify(c);});
+  (giderler||[]).forEach(function(g){m['g'+g.id]=JSON.stringify(g);});
+  (muhtGelirler||[]).forEach(function(g){m['m'+g.id]=JSON.stringify(g);});
+  return m;
+}
+function stampChanged(){
+  var now=new Date().toISOString();
+  var prev=_stampSnap;
+  if(prev){
+    (data||[]).forEach(function(c){
+      if(prev['c'+c.id]!==JSON.stringify(c)) c.updatedAt=now;
     });
-    setSyncStatus('ok','Senkron ✓');
-  }catch(e){
-    setSyncStatus('err','Hata: '+e.message);
-    console.error('GAS push error:',e);
+    (giderler||[]).forEach(function(g){
+      if(prev['g'+g.id]!==JSON.stringify(g)) g.updatedAt=now;
+    });
+    (muhtGelirler||[]).forEach(function(g){
+      if(prev['m'+g.id]!==JSON.stringify(g)) g.updatedAt=now;
+    });
+  }
+  _stampSnap=_snapMap();
+}
+
+// ------------------------------------------------------------
+// ANA SENKRON DÖNGÜSÜ
+// oku → birleştir → yaz → geri oku ve doğrula
+// ------------------------------------------------------------
+var _syncTimer=null;
+var _syncBusy=false;
+var _syncAgain=false;
+var _dirty=false;
+
+function syncToSupabase(){
+  _dirty=true;
+  stampChanged();
+  saveData(); saveGiderler(); saveMuhtGelirler(); saveTombs();
+  setSyncStatus('syncing','Kaydediliyor...');
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(function(){runSync();},1200);
+}
+
+async function runSync(){
+  if(_syncBusy){_syncAgain=true;return;}
+  _syncBusy=true;
+  snapshot('senkron öncesi');
+  var son=null;
+  try{
+    for(var i=0;i<SYNC_MAX_TRY;i++){
+      try{
+        // 1) Sunucuyu oku (körlemesine yazma yok)
+        var remote=await gasGet();
+
+        // 2) Birleştir — iki taraftaki her kayıt korunur
+        var merged=mergeState({
+          clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
+        },remote);
+
+        // 3) Birleşmiş hali yerele al (uzaktaki yenilikler de gelsin)
+        var oncekiSig=stateSig({clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs});
+        adoptState(merged);
+        if(stateSig(merged)!==oncekiSig){ _stampSnap=_snapMap(); redrawAll(); }
+
+        // 4) Sunucuda zaten aynısı varsa yazmaya gerek yok
+        if(stateSig(merged)===stateSig(remote)){
+          _dirty=false; pendSet(null);
+          setSyncStatus('ok','Kaydedildi ✓');
+          _syncBusy=false;
+          if(_syncAgain){_syncAgain=false;runSync();}
+          return;
+        }
+
+        // 5) Yaz
+        var gonderilen=buildState();
+        pendSet({at:new Date().toISOString(),json:JSON.stringify(gonderilen)});
+        await gasPost(gonderilen);
+
+        // 6) GERİ OKU VE DOĞRULA — asıl güvence burası
+        var kontrol=await gasGet();
+        if(stateSig(kontrol)!==stateSig(gonderilen)) throw new Error('dogrulama-uyusmadi');
+
+        _dirty=false; pendSet(null);
+        setSyncStatus('ok','Kaydedildi ✓ '+new Date().toLocaleTimeString('tr-TR').slice(0,5));
+        _syncBusy=false;
+        if(_syncAgain){_syncAgain=false;runSync();}
+        return;
+
+      }catch(e){
+        son=e;
+        setSyncStatus('syncing','Yeniden deneniyor ('+(i+1)+'/'+SYNC_MAX_TRY+')...');
+        await new Promise(function(res){setTimeout(res,SYNC_BACKOFF[i]||30000);});
+      }
+    }
+    // Tüm denemeler başarısız — veri yerelde duruyor, kuyrukta bekliyor
+    console.error('Senkron başarısız:',son);
+    var neden='';
+    if(son&&son.sunucu&&son.sunucu.error==='ani-kuculme'){
+      neden=' — Sunucu toplu kayıt kaybını engelledi: '+(son.sunucu.mesaj||'');
+    } else if(son&&son.message){
+      neden=' ('+son.message+')';
+    }
+    setSyncStatus('err','⚠ SUNUCUYA KAYDEDİLEMEDİ — veriler bu cihazda güvende, tekrar denenecek'+neden);
+    setTimeout(function(){ if(_dirty) runSync(); },60000);
+  } finally {
+    _syncBusy=false;
+    if(_syncAgain){_syncAgain=false;setTimeout(runSync,500);}
   }
 }
 
-var _syncTimer=null;
-function syncToSupabase(){
-  clearTimeout(_syncTimer);
-  setSyncStatus('syncing','Kaydediliyor...');
-  _syncTimer=setTimeout(function(){pushToSupabase();},1500);
+// ------------------------------------------------------------
+// AÇILIŞ
+// ------------------------------------------------------------
+async function initSupabase(){
+  setSyncStatus('syncing','Yükleniyor...');
+  _stampSnap=_snapMap();
+  var bekleyen=pendGet();
+  if(bekleyen) _dirty=true;   // önceki oturumdan kalan yazma var
+  try{
+    var remote=await gasGet();
+    var merged=mergeState({
+      clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
+    },remote);
+    adoptState(merged);
+    _stampSnap=_snapMap();
+    snapshot('açılış');
+    redrawAll();
+    if(stateSig(merged)!==stateSig(remote)){
+      _dirty=true; runSync();                 // yerelde fazlası var → yukarı taşı
+    } else {
+      _dirty=false; pendSet(null);
+      setSyncStatus('ok','Senkron ✓');
+    }
+  }catch(e){
+    console.error('Açılışta sunucu okunamadı:',e);
+    snapshot('açılış (çevrimdışı)');
+    redrawAll();
+    setSyncStatus('err','⚠ Sunucuya ulaşılamadı — çevrimdışı çalışılıyor, veriler bu cihazda');
+    setTimeout(function(){initSupabase();},30000);
+  }
 }
 
-// Orijinal saveData'yı wrap et
-var _origSaveData=saveData;
-saveData=function(){_origSaveData();};
-var _origSaveGiderler=saveGiderler;
-saveGiderler=function(){_origSaveGiderler();};
-var _origSaveMuhtGelirler=saveMuhtGelirler;
-saveMuhtGelirler=function(){_origSaveMuhtGelirler();};
+function redrawAll(){
+  try{renderClients();}catch(e){}
+  try{renderGiderler();}catch(e){}
+  try{renderMuhtGelirler();}catch(e){}
+  try{renderDanismanlik();}catch(e){}
+  try{renderOzet();}catch(e){}
+}
+
+// ------------------------------------------------------------
+// SEKME KAPANIRKEN SON KAYIT
+// ------------------------------------------------------------
+function flushSync(){
+  if(!_dirty) return;
+  try{
+    var blob=new Blob([JSON.stringify(buildState())],{type:'text/plain;charset=utf-8'});
+    navigator.sendBeacon(GAS_URL+'?type='+GAS_TYPE,blob);
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden') flushSync();
+  else if(_dirty) runSync();
+});
+window.addEventListener('pagehide',flushSync);
+window.addEventListener('beforeunload',function(e){
+  if(_dirty){
+    flushSync();
+    e.preventDefault();
+    e.returnValue='Kaydedilmemiş değişiklikler var.';
+    return e.returnValue;
+  }
+});
+window.addEventListener('online',function(){ if(_dirty) runSync(); });
 
 // ============================================================
 // YEDEK AL / YÜKLE
 // ============================================================
 function yedekAl(){
   var payload={
-    versiyon: 3,
+    versiyon: 4,
     tarih: new Date().toISOString(),
     clients: data,
     giderler: giderler,
-    muhtGelirler: muhtGelirler
+    muhtGelirler: muhtGelirler,
+    tombs: tombs
   };
   var json=JSON.stringify(payload, null, 2);
   var blob=new Blob([json],{type:'application/json'});
@@ -1566,28 +2052,85 @@ function yedekYukle(input){
     try{
       var payload=JSON.parse(e.target.result);
       // Eski format (düz dizi) veya yeni format (obje) destekle
+      var gelen;
       if(Array.isArray(payload)){
-        data=payload;
-        giderler=[];
-        muhtGelirler=[];
+        gelen={clients:payload,giderler:[],muhtGelirler:[],tombs:[]};
       } else {
         if(!payload.clients||!Array.isArray(payload.clients)) throw new Error('Geçersiz format');
-        data=payload.clients;
-        giderler=payload.giderler||[];
-        muhtGelirler=payload.muhtGelirler||[];
+        gelen={
+          clients:payload.clients,
+          giderler:payload.giderler||[],
+          muhtGelirler:payload.muhtGelirler||[],
+          tombs:payload.tombs||[]
+        };
       }
-      saveData();
-      saveGiderler();
-      saveMuhtGelirler();
+      snapshot('yedek yüklenmeden önce');
+      var oncekiAdet=data.length;
+      // Üzerine yazma DEĞİL, birleştirme: yedekteki kayıtlar eklenir,
+      // mevcut kayıtların hiçbiri kaybolmaz.
+      var birlesik=mergeState({
+        clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
+      },gelen);
+      adoptState(birlesik);
+      _stampSnap=_snapMap();
       syncToSupabase();
-      renderClients();
-      showBackupMsg('✓ Yedek yüklendi — '+data.length+' müvekkil','ok');
+      redrawAll();
+      showBackupMsg('✓ Yedek birleştirildi — '+oncekiAdet+' → '+data.length+' müvekkil','ok');
     }catch(err){
       showBackupMsg('✗ Hata: '+err.message,'err');
     }
     input.value=''; // aynı dosyayı tekrar seçebilmek için sıfırla
   };
   reader.readAsText(file);
+}
+
+function snapPanelToggle(){
+  var el=document.getElementById('snap-panel');
+  if(el.style.display==='block'){el.style.display='none';return;}
+  var snaps=snapList().slice().reverse();
+  var box=document.getElementById('snap-list');
+  if(!snaps.length){
+    box.innerHTML='<div class="snap-info" style="font-size:12px;color:var(--ink3)">Henüz otomatik yedek yok.</div>';
+  } else {
+    box.innerHTML=snaps.map(function(sn,idx){
+      var o={};
+      try{o=JSON.parse(sn.json);}catch(e){}
+      var d=new Date(sn.at);
+      return '<div class="snap-row">'
+        +'<span class="snap-when">'+d.toLocaleDateString('tr-TR')+' '+d.toLocaleTimeString('tr-TR').slice(0,5)+'</span>'
+        +'<span class="snap-info">'+((o.clients||[]).length)+' müvekkil · '
+          +((o.giderler||[]).length)+' gider · '
+          +((o.muhtGelirler||[]).length)+' gelir'
+          +(sn.reason?' — '+escHtml(sn.reason):'')+'</span>'
+        +'<button onclick="snapRestore('+(snaps.length-1-idx)+')">Geri yükle</button>'
+        +'</div>';
+    }).join('');
+  }
+  el.style.display='block';
+}
+
+function snapRestore(i){
+  var snaps=snapList();
+  var sn=snaps[i];
+  if(!sn) return;
+  var o;
+  try{o=JSON.parse(sn.json);}catch(e){alert('Yedek okunamadı.');return;}
+  var d=new Date(sn.at);
+  var mesaj=d.toLocaleString('tr-TR')+' anındaki yedek geri yüklensin mi?'
+    +'\n\n'+((o.clients||[]).length)+' müvekkil · '+((o.giderler||[]).length)+' gider · '+((o.muhtGelirler||[]).length)+' gelir'
+    +'\n\nBu işlem BİRLEŞTİRME yapar: yedekteki kayıtlar geri gelir,'
+    +'\nmevcut kayıtların hiçbiri silinmez.';
+  if(!confirm(mesaj)) return;
+  snapshot('geri yükleme öncesi');
+  var birlesik=mergeState({
+    clients:data,giderler:giderler,muhtGelirler:muhtGelirler,tombs:tombs
+  },{clients:o.clients||[],giderler:o.giderler||[],muhtGelirler:o.muhtGelirler||[],tombs:o.tombs||[]});
+  adoptState(birlesik);
+  _stampSnap=_snapMap();
+  syncToSupabase();
+  redrawAll();
+  document.getElementById('snap-panel').style.display='none';
+  showBackupMsg('✓ Geri yüklendi — '+data.length+' müvekkil','ok');
 }
 
 function showBackupMsg(text,type){
