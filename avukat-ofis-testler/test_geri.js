@@ -1,8 +1,8 @@
 // 1) Istemci ve sunucu imza algoritmalarinin birebir ayni oldugunu,
 // 2) "Geri al"in birlestirmede geri alinmadigini dogrular.
 const fs = require('fs');
-const html = fs.readFileSync('c:/Users/arbil/Desktop/claude/index.html', 'utf8');
-const gs = fs.readFileSync('c:/Users/arbil/Desktop/claude/avukat-ofis-sunucu.gs', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const gs = fs.readFileSync(require('path').join(__dirname, '..', 'avukat-ofis-sunucu.gs'), 'utf8');
 function kes(src, bas, son) {
   const i = src.indexOf(bas), j = src.indexOf(son, i);
   if (i < 0 || j < 0) throw new Error('blok yok: ' + bas.slice(0, 40));

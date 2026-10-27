@@ -1,7 +1,7 @@
 // Danismanlik ucretlerinin gelir toplamlarina dogru yansidigini sinar.
 // Sevk edilen index.html kodunu aynen kullanir.
 const fs = require('fs');
-const html = fs.readFileSync('c:/Users/arbil/Desktop/claude/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 
 function kes(bas, son) {
   const i = html.indexOf(bas), j = html.indexOf(son, i);
@@ -129,7 +129,7 @@ console.log('\n=== 7. Geçmiş ay işaretlenirse doğru aya düşüyor ===');
 console.log('\n=== 8. GERÇEK VERİ: eski işaretlemelerin telafisi ===');
 {
   const canli = JSON.parse(fs.readFileSync(
-    'c:/Users/arbil/Desktop/Yedeklemeler/avukat-ofis-yedek/avukat-yedek-2026-09-04.json', 'utf8'));
+    process.env.YEDEK_JSON || 'C:/Users/arbil/Desktop/avukat-yedek-26-10-2026.json', 'utf8'));
   data = canli.clients; giderler = canli.giderler; muhtGelirler = canli.muhtGelirler; tombs = [];
   const once = toplamTahsilat();
   const n = danismanlikTelafi();

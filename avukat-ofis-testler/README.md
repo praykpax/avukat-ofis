@@ -15,6 +15,10 @@ node test_soz.js          # söz verilen ödemeler: gruplama, tahsil/geri al,
 node test_geri.js         # danismanlik "Geri al" kaliciligi + istemci/sunucu
                           # imza algoritmalarinin birebir esitligi
 node test_hiz.js          # tek istekli hizli yol ve catisma guvenligi
+node test_mezar.js        # satir mezar taslari (odeme/masraf silme) birlestirmede
+                          # kaybolmuyor: art arda silme, iki cihaz, eski kopya
+node test_masraf.js       # muvekkil masraflari genel giderlere dahil
+                          # (Giderler sekmesi, aylik/genel toplam, XSS kacisi)
 node test_canli.js        # GERÇEK endpoint'e karşı uçtan uca
                           # (ayrı "_test_v2" sayfası — gerçek veriye dokunmaz)
 ```

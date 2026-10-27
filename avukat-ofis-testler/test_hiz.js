@@ -1,8 +1,8 @@
 // Hizli yol (tek istekli kayit) ve catisma guvenligi.
 // Sahte sunucu, sevk edilen avukat-ofis-sunucu.gs v2.1 davranisini taklit eder.
 const fs = require('fs');
-const html = fs.readFileSync('c:/Users/arbil/Desktop/claude/index.html', 'utf8');
-const gs = fs.readFileSync('c:/Users/arbil/Desktop/claude/avukat-ofis-sunucu.gs', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const gs = fs.readFileSync(require('path').join(__dirname, '..', 'avukat-ofis-sunucu.gs'), 'utf8');
 const kes = (s, a, b) => s.slice(s.indexOf(a), s.indexOf(b, s.indexOf(a)));
 const SENKRON = kes(html, '// SENKRONİZASYON MOTORU v2', "window.addEventListener('online'");
 

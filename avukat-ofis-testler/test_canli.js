@@ -1,7 +1,7 @@
 // GERCEK Apps Script endpoint'ine karsi uctan uca deneme.
 // Gercek 'avukat' verisine DOKUNMAZ — ayri bir '_test_v2' sayfasi kullanir.
 const fs = require('fs');
-const html = fs.readFileSync('c:/Users/arbil/Desktop/claude/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 const bas = html.indexOf('// SENKRONİZASYON MOTORU v2');
 const son = html.indexOf("window.addEventListener('online'");
 let SRC = html.slice(bas, html.indexOf('\n', son));

@@ -1,6 +1,6 @@
 // "Soz verilen odeme" ozelligini sevk edilen index.html kodu uzerinden sinar.
 const fs = require('fs');
-const html = fs.readFileSync('c:/Users/arbil/Desktop/claude/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 function kes(bas, son) {
   const i = html.indexOf(bas), j = html.indexOf(son, i);
   if (i < 0 || j < 0) throw new Error('blok bulunamadi: ' + bas.slice(0, 40));
@@ -221,7 +221,7 @@ console.log('\n=== 8. Senkron birleştirmesi ===');
   console.log('\n=== 11. GERÇEK VERİ üzerinde bozulma yok ===');
   {
     const canli = JSON.parse(fs.readFileSync(
-      'c:/Users/arbil/Desktop/Yedeklemeler/avukat-ofis-yedek/avukat-yedek-2026-09-04_yayin-sonrasi.json', 'utf8'));
+      process.env.YEDEK_JSON || 'C:/Users/arbil/Desktop/avukat-yedek-26-10-2026.json', 'utf8'));
     data = canli.clients; giderler = canli.giderler; muhtGelirler = canli.muhtGelirler; tombs = [];
     const once = tahsilat();
     renderSozUyari(); renderTakvim();

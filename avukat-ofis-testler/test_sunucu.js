@@ -1,6 +1,6 @@
 // avukat-ofis-sunucu.gs dosyasini Apps Script ortamini taklit ederek sinar.
 const fs = require('fs');
-let SRC = fs.readFileSync('c:/Users/arbil/Desktop/claude/avukat-ofis-sunucu.gs', 'utf8');
+let SRC = fs.readFileSync(require('path').join(__dirname, '..', 'avukat-ofis-sunucu.gs'), 'utf8');
 
 // ---- Apps Script taklidi ----
 class Sheet {

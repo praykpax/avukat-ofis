@@ -844,7 +844,7 @@ function renderClients(){
         +'</div>'
 
         +'<div class="ipane" id="ip-masraf-'+i+'">'
-          +'<div class="slabel">Dosya masrafları</div>'
+          +'<div class="slabel">Dosya masrafları <span style="font-weight:400;text-transform:none;letter-spacing:0">· genel giderlere dahil</span></div>'
           +'<div>'+masraflar+'</div>'
           +(masrafTotal>0?'<div class="total-box"><span>Toplam masraf</span><span style="color:var(--red)">'+fmt(masrafTotal)+'</span></div>':'')
           +'<button class="sm-btn" onclick="togForm(\'masraf\','+i+')">+ Masraf ekle</button>'
@@ -1065,8 +1065,33 @@ function delGider(id){
   renderGiderler();
 }
 
+// MÜVEKKİL MASRAFLARI GİDER SAYILIR
+// Müvekkil kartındaki masraflar genel giderlere dahildir. Giderler dizisine
+// KOPYALANMAZ: her seferinde müvekkil verisinden türetilir. Böylece kayıt
+// tek yerde durur, senkron/birleştirme yoluna girmez ve masraf silinince
+// gider de kendiliğinden düşer. Tarihsiz masraf aya düşmez, yalnızca genel
+// toplama girer.
+function masrafGiderleri(){
+  var out=[];
+  data.forEach(function(c,ci){
+    (c.masraflar||[]).forEach(function(m){
+      var tut=m.tutar||0;
+      if(tut<=0) return;
+      var yil=null,ay=null;
+      if(m.tarih){
+        var d=new Date(m.tarih);
+        if(!isNaN(d.getTime())){yil=d.getFullYear();ay=d.getMonth();}
+      }
+      out.push({id:null,masraf:true,kategori:'Müvekkil masrafı',tarih:m.tarih||'',
+        tutar:tut,aciklama:(c.name||'Müvekkil')+' — '+(m.aciklama||'Masraf'),yil:yil,ay:ay});
+    });
+  });
+  return out;
+}
+function tumGiderler(){return giderler.concat(masrafGiderleri());}
+
 function renderGiderler(){
-  var ayGiderler=giderler.filter(function(g){return g.yil===giderYil&&g.ay===giderAy;});
+  var ayGiderler=tumGiderler().filter(function(g){return g.yil===giderYil&&g.ay===giderAy;});
   var toplamAy=ayGiderler.reduce(function(s,g){return s+g.tutar;},0);
 
   // Kategori bazlı toplam
@@ -1091,13 +1116,15 @@ function renderGiderler(){
       +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span class="gider-cat-tag">'+g.kategori+'</span>'
         +'<div>'
-          +'<div style="font-weight:500">'+g.aciklama+'</div>'
+          +'<div style="font-weight:500">'+(g.masraf?escHtml(g.aciklama):g.aciklama)+'</div>'
           +'<div style="font-size:11px;color:var(--ink3)">'+d+'</div>'
         +'</div>'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span style="font-weight:600;color:var(--red)">'+fmt(g.tutar)+'</span>'
-        +'<button class="del-btn" onclick="delGider('+g.id+')">Sil</button>'
+        +(g.masraf
+          ?'<span style="font-size:11px;color:var(--ink3)" title="Müvekkil kartındaki Masraflar sekmesinden silinir">müvekkil kartı</span>'
+          :'<button class="del-btn" onclick="delGider('+g.id+')">Sil</button>')
       +'</div>'
     +'</div>';
   }).join('');
@@ -1209,7 +1236,7 @@ function ozetYilSecenekleri(){
   var yillar={};
   yillar[now.getFullYear()]=true;
   data.forEach(function(c){(c.payments||[]).forEach(function(p){if(p.date)yillar[new Date(p.date).getFullYear()]=true;});});
-  giderler.forEach(function(g){if(g.yil)yillar[g.yil]=true;});
+  tumGiderler().forEach(function(g){if(g.yil)yillar[g.yil]=true;});
   muhtGelirler.forEach(function(g){if(g.yil)yillar[g.yil]=true;});
   return Object.keys(yillar).map(Number).sort(function(a,b){return b-a;});
 }
@@ -1286,7 +1313,7 @@ function gelirForMonth(y,m){
 }
 
 function giderForMonth(y,m){
-  return giderler.filter(function(g){return g.yil===y&&g.ay===m;})
+  return tumGiderler().filter(function(g){return g.yil===y&&g.ay===m;})
     .reduce(function(s,g){return s+g.tutar;},0);
 }
 
@@ -1311,7 +1338,7 @@ function renderOzet(){
   var toplamTahsilat=data.reduce(function(s,c){return s+paid(c);},0);
   var toplamMuhtGelir=muhtGelirler.reduce(function(s,g){return s+g.tutar;},0);
   var toplamGelir=toplamTahsilat+toplamMuhtGelir;
-  var toplamGider=giderler.reduce(function(s,g){return s+g.tutar;},0);
+  var toplamGider=tumGiderler().reduce(function(s,g){return s+g.tutar;},0);
   var netKar=toplamGelir-toplamGider;
   var toplamAnlasman=data.reduce(function(s,c){return s+c.agreed;},0);
   var toplamBakiye=toplamAnlasman-toplamTahsilat;
@@ -2116,6 +2143,26 @@ function mergeById(a,b){
   return order.map(function(k){return m[k];});
 }
 
+// Mezar taşı birleştirme. mergeById KULLANILAMAZ: satır mezar taşlarında
+// id null olduğundan rowKey hepsine aynı anahtarı veriyor ve tüm silme
+// kayıtları tek kayda çöküyordu (yeni silinen ödeme sunucudan geri geliyordu).
+// Kimlik = tür + id + müvekkil + satır imzası; aynı kimlikte en yeni 'at' kalır.
+function tombKey(t){
+  return [t.k,t.id==null?'':t.id,t.cid==null?'':t.cid,t.sig==null?'':t.sig].join('\u0001');
+}
+function mergeTombs(a,b){
+  var m={},order=[];
+  function add(t){
+    if(!t||typeof t!=='object') return;
+    var k=tombKey(t);
+    if(!(k in m)){m[k]=t;order.push(k);}
+    else if((t.at||'')>(m[k].at||'')) m[k]=t;
+  }
+  (a||[]).forEach(add);
+  (b||[]).forEach(add);
+  return order.map(function(k){return m[k];});
+}
+
 // Mezar taşlarını uygula: silme, ancak silme kaydı ilgili kaydın
 // son güncelleme anından YENİ ise geçerlidir (silinip tekrar
 // eklenen kayıt geri gelmez, sildikten sonra düzenlenen kayıt kaybolmaz).
@@ -2156,7 +2203,7 @@ function mergeState(loc,rem){
     clients:      mergeClients(loc.clients, rem.clients),
     giderler:     mergeById(loc.giderler,    rem.giderler),
     muhtGelirler: mergeById(loc.muhtGelirler,rem.muhtGelirler),
-    tombs:        tombPrune(mergeById(loc.tombs,rem.tombs))
+    tombs:        tombPrune(mergeTombs(loc.tombs,rem.tombs))
   };
   return applyTombs(out,out.tombs);
 }

@@ -1,7 +1,7 @@
 // index.html icindeki SEVK EDILEN senkron motorunu cikarip gercek
 // senaryolarla sinar. Amac: hicbir kosulda veri kaybi olmadigini kanitlamak.
 const fs = require('fs');
-const path = 'c:/Users/arbil/Desktop/claude/index.html';
+const path = require('path').join(__dirname, '..', 'index.html');
 const html = fs.readFileSync(path, 'utf8');
 
 // --- Sevk edilen senkron blogunu aynen cikar ---
@@ -229,7 +229,7 @@ console.log('\n=== 12. Yerel anlık görüntüler tutuluyor ===');
 
 console.log('\n=== 13. Hücre 50.000 karakter sınırı ===');
 {
-  const mevcut = fs.readFileSync('c:/Users/arbil/Desktop/Yedeklemeler/avukat-ofis-yedek/avukat-yedek-2026-09-04.json', 'utf8');
+  const mevcut = fs.readFileSync(process.env.YEDEK_JSON || 'C:/Users/arbil/Desktop/avukat-yedek-26-10-2026.json', 'utf8');
   const o = JSON.parse(mevcut);
   const boy = JSON.stringify({ clients: o.clients, giderler: o.giderler, muhtGelirler: o.muhtGelirler, tombs: [], meta: {} }).length;
   ok('mevcut veri sınırın altında', boy < 50000, boy + ' / 50000 karakter');
